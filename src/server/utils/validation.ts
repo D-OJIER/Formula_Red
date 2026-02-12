@@ -74,13 +74,13 @@ export function validateSubmissionPayload(
     };
   }
 
-  // Verify lap time bounds (reasonable bounds: 5 seconds to 10 minutes)
+  // Verify lap time bounds (reasonable bounds: 5 seconds to 1 hour for total race time)
   // Lower bound accounts for very short tracks, upper bound prevents unrealistic times
-  // Using 5 seconds as minimum to be very permissive
-  if (typeof payload.lapTime !== 'number' || isNaN(payload.lapTime) || payload.lapTime < 5 || payload.lapTime > 600) {
+  // Using 5 seconds as minimum, 3600 seconds (1 hour) maximum for total race completion time
+  if (typeof payload.lapTime !== 'number' || isNaN(payload.lapTime) || payload.lapTime < 5 || payload.lapTime > 3600) {
     return {
       valid: false,
-      error: `lapTime must be between 5 and 600 seconds (received: ${payload.lapTime})`,
+      error: `Race completion time must be between 5 and 3600 seconds (received: ${payload.lapTime})`,
     };
   }
 

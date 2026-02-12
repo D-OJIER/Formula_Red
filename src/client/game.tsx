@@ -44,56 +44,52 @@ const App = () => {
   ) => {
     if (mode === 'official' && !hasSubmitted && !raceFrozen) {
       try {
-        // Validate and filter lap times
-        const validLapTimes = lapTimes.filter(lt => lt > 0 && lt < 1000 && !isNaN(lt));
-        
-        if (validLapTimes.length === 0) {
-          throw new Error('No valid lap times recorded. Please complete at least one lap.');
+        // Validate total time
+        if (!totalTime || totalTime <= 0 || totalTime > 3600 || isNaN(totalTime)) {
+          throw new Error(`Invalid total race time: ${totalTime}s. Please complete the race properly.`);
         }
-        
-        // Use the best lap time for submission (fastest single lap)
-        const bestLapTime = Math.min(...validLapTimes);
         
         console.log('Race complete:', {
           totalTime,
-          lapTimes: validLapTimes,
-          bestLapTime,
+          lapTimes,
           checkpointTimes,
         });
         
         // Ensure checkpointTimes is valid - if empty, create default checkpoints
         let validCheckpointTimes = checkpointTimes;
         if (!validCheckpointTimes || validCheckpointTimes.length === 0) {
-          // Create checkpoints at 25%, 50%, 75% of best lap time
+          // Create checkpoints at 25%, 50%, 75% of total time
           validCheckpointTimes = [
-            bestLapTime * 0.25,
-            bestLapTime * 0.5,
-            bestLapTime * 0.75,
-            bestLapTime
+            totalTime * 0.25,
+            totalTime * 0.5,
+            totalTime * 0.75,
+            totalTime
           ];
         }
         
-        // Ensure checkpointTimes are in ascending order and don't exceed lap time
+        // Ensure checkpointTimes are in ascending order and don't exceed total time
         validCheckpointTimes = validCheckpointTimes
-          .filter((t) => t > 0 && t <= bestLapTime && !isNaN(t))
+          .filter((t) => t > 0 && t <= totalTime && !isNaN(t))
           .sort((a, b) => a - b);
         
         // If still empty, add at least one checkpoint
         if (validCheckpointTimes.length === 0) {
-          validCheckpointTimes = [bestLapTime];
+          validCheckpointTimes = [totalTime];
         }
         
-        await submitOfficialRun(bestLapTime, validCheckpointTimes, replayHash, carConfig);
+        // Submit total race completion time instead of best lap time
+        await submitOfficialRun(totalTime, validCheckpointTimes, replayHash, carConfig);
         
         // Use showToast instead of alert for Devvit
         const { showToast } = await import('@devvit/web/client');
-        showToast(`Race Complete! Your time: ${totalTime.toFixed(2)}s (Best Lap: ${bestLapTime.toFixed(2)}s)`);
+        const bestLap = lapTimes.length > 0 ? Math.min(...lapTimes.filter(lt => lt > 0)) : totalTime / lapsRequired;
+        showToast(`Race Complete! Total Time: ${totalTime.toFixed(2)}s (Best Lap: ${bestLap.toFixed(2)}s)`);
       } catch (error) {
         console.error('Failed to submit official run:', error);
         const errorMessage = error instanceof Error ? error.message : 'Submission failed';
         console.error('Submission error details:', { 
+          totalTime,
           lapTimes, 
-          bestLapTime: lapTimes.length > 0 ? Math.min(...lapTimes.filter(lt => lt > 0)) : 'N/A',
           checkpointTimes, 
           errorMessage 
         });

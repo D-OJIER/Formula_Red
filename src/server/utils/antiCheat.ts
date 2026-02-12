@@ -21,23 +21,28 @@ export function validateReplayHash(
 }
 
 /**
- * Checks for suspicious lap time
+ * Checks for suspicious race completion time
+ * Note: This checks total race time, not individual lap time
  */
 export function checkSuspiciousLapTime(
-  lapTime: number,
+  lapTime: number, // Actually total race completion time
   trackLength: number
 ): { suspicious: boolean; reason?: string } {
-  // Calculate minimum theoretical lap time
+  // Calculate minimum theoretical time per lap
   // Assuming max speed of 300 km/h = 83.33 m/s
   const maxSpeed = 83.33;
-  const minTheoreticalTime = trackLength / maxSpeed;
+  const minTheoreticalTimePerLap = trackLength / maxSpeed;
+  
+  // For total race time, we need at least 3 laps typically
+  // So minimum theoretical total time would be ~3x single lap time
+  const minTheoreticalTotalTime = minTheoreticalTimePerLap * 2; // At least 2 laps worth
 
-  // If lap time is less than 60% of theoretical minimum, flag as suspicious
-  // More lenient threshold to account for short tracks and good driving
-  if (lapTime < minTheoreticalTime * 0.6) {
+  // If total time is less than 50% of theoretical minimum, flag as suspicious
+  // More lenient threshold since this is total race time, not single lap
+  if (lapTime < minTheoreticalTotalTime * 0.5) {
     return {
       suspicious: true,
-      reason: `Lap time ${lapTime.toFixed(2)}s is suspiciously fast for track length ${trackLength}m (minimum theoretical: ${minTheoreticalTime.toFixed(2)}s)`,
+      reason: `Race completion time ${lapTime.toFixed(2)}s seems suspiciously fast for track length ${trackLength}m`,
     };
   }
 
