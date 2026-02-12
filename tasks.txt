@@ -1,0 +1,165 @@
+FORMULA RED – CURSOR AI TASK PROMPTS (Use this file as sequential tasks
+inside Cursor AI)
+
+  --------------------------------------------------
+  GLOBAL CONTEXT FOR CURSOR
+  --------------------------------------------------
+  TASK 1 – Project bootstrap
+
+  Create a new Devvit project named formula-red.
+
+  Include: - main entry file - Devvit UI rendering
+  setup - KV storage usage - basic logging helpers
+  --------------------------------------------------
+
+TASK 2 – Core domain models
+
+Create TypeScript interfaces for:
+
+RaceDay TrackConfig PracticeSession RaceResult DriverSubmission
+SeasonStanding
+
+All fields must match the Formula Red documentation.
+
+  --------------------------------------------------
+  TASK 3 – Track generator
+  --------------------------------------------------
+  TASK 4 – Daily modifier generator
+
+  Implement:
+
+  generateDailyModifier(trackSeed: string)
+
+  Return exactly one modifier per day: - RAIN -
+  DIRTY_AIR - HIGH_TYRE_WEAR - SAFETY_CAR - LOW_GRIP
+
+  Must be deterministic.
+  --------------------------------------------------
+
+TASK 5 – Simulation engine
+
+Implement:
+
+simulateLap( track: TrackConfig, modifier, submission, userId,
+seedSuffix )
+
+Use the Formula Red lap time formula and deterministic RNG.
+
+Support both: - practice runs (with telemetry noise) - race runs (clean
+model)
+
+  --------------------------------------------------
+  TASK 6 – Practice session storage
+  --------------------------------------------------
+  TASK 7 – Race storage
+
+  Implement KV helpers for:
+
+  race:YYYYMMDD
+
+  Fields: - trackSeed - trackConfig - modifier -
+  results - frozen
+
+  Enforce: - one official submission per user -
+  cannot submit after frozen = true
+  --------------------------------------------------
+
+TASK 8 – Season storage
+
+Implement:
+
+season:current
+
+Track: - standings per user - podium count per user - racesPlayed per
+user
+
+  --------------------------------------------------
+  TASK 9 – Points system
+  --------------------------------------------------
+  TASK 10 – End of day finalization job
+
+  Implement a job or scheduled handler that:
+
+  - freezes the race - sorts results - selects
+  podium (P1, P2, P3) - updates season standings
+  --------------------------------------------------
+
+TASK 11 – Session time controller
+
+Implement helpers that determine the active session based on UTC time:
+
+P1 00:00–04:00 P2 04:00–08:00 P3 08:00–12:00 P4 12:00–16:00 RACE
+16:00–23:59
+
+Return enum: P1 | P2 | P3 | P4 | RACE | CLOSED
+
+  --------------------------------------------------
+  TASK 12 – UI layout
+  --------------------------------------------------
+  TASK 13 – Submission handler
+
+  Implement handler that:
+
+  - validates active session - blocks duplicate
+  submissions - runs simulation - stores result -
+  refreshes leaderboard
+  --------------------------------------------------
+
+TASK 14 – Leaderboard sorting
+
+Implement sorting utilities:
+
+-   ascending lap time
+-   stable ordering
+-   tie-break using submission timestamp
+
+  --------------------------------------------------
+  TASK 15 – Podium announcement
+  --------------------------------------------------
+  TASK 16 – Admin tools
+
+  Implement moderator-only actions:
+
+  - force freeze race - recompute race results -
+  reset practice sessions for a day
+  --------------------------------------------------
+
+TASK 17 – Anti-abuse
+
+Add guards for:
+
+-   multiple submissions
+-   late submissions
+-   corrupted data
+-   invalid session access
+
+  --------------------------------------------------
+  TASK 18 – Deterministic RNG utility
+  --------------------------------------------------
+  TASK 19 – Telemetry noise (practice only)
+
+  Inject a small bounded random offset ONLY in
+  practice simulation.
+  --------------------------------------------------
+
+TASK 20 – Minimal tests
+
+Create simple unit tests for:
+
+-   track generator determinism
+-   modifier generator determinism
+-   simulation determinism
+-   points calculation
+
+------------------------------------------------------------------------
+
+FINAL GOAL
+
+The system must fully support:
+
+-   four practice sessions per day
+-   one official race per day
+-   professional season leaderboard
+-   deterministic and fair simulation
+
+This project must exactly follow the Formula Red documentation.
