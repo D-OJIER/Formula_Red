@@ -17,8 +17,8 @@ export const Podium = ({ podium }: PodiumProps) => {
       </div>
       <div className="flex items-end justify-center gap-4">
         {podium.p2 && (
-          <div className="flex flex-col items-center">
-            <div className="bg-gradient-to-br from-gray-300 to-gray-400 text-gray-900 p-4 rounded-t-lg w-28 h-24 flex flex-col items-center justify-center border-2 border-gray-500 shadow-lg">
+          <div className="flex flex-col items-center max-w-[120px]">
+            <div className="bg-gradient-to-br from-gray-300 to-gray-400 text-gray-900 p-3 rounded-t-lg w-full h-24 flex flex-col items-center justify-center border-2 border-gray-500 shadow-lg">
               <img
                 src={podium.p2.avatarUrl || getRedditAvatarUrl(podium.p2.userId)}
                 alt={podium.p2.username}
@@ -35,8 +35,10 @@ export const Podium = ({ podium }: PodiumProps) => {
                   }
                 }}
               />
-              <div className="text-center">
-                <div className="text-sm font-bold">{podium.p2.username}</div>
+              <div className="text-center w-full">
+                <div className="text-xs font-bold truncate max-w-full px-1" title={podium.p2.username}>
+                  {podium.p2.username}
+                </div>
                 <div className="text-xs font-mono">{podium.p2.lapTime.toFixed(3)}s</div>
               </div>
             </div>
@@ -45,8 +47,8 @@ export const Podium = ({ podium }: PodiumProps) => {
         )}
 
         {podium.p1 && (
-          <div className="flex flex-col items-center">
-            <div className="bg-gradient-to-br from-yellow-400 to-yellow-500 text-yellow-900 p-5 rounded-t-lg w-32 h-32 flex flex-col items-center justify-center border-4 border-yellow-600 shadow-xl transform scale-105">
+          <div className="flex flex-col items-center max-w-[140px]">
+            <div className="bg-gradient-to-br from-yellow-400 to-yellow-500 text-yellow-900 p-4 rounded-t-lg w-full h-32 flex flex-col items-center justify-center border-4 border-yellow-600 shadow-xl transform scale-105">
               <img
                 src={podium.p1.avatarUrl || getRedditAvatarUrl(podium.p1.userId)}
                 alt={podium.p1.username}
@@ -63,8 +65,10 @@ export const Podium = ({ podium }: PodiumProps) => {
                   }
                 }}
               />
-              <div className="text-center">
-                <div className="text-base font-bold">{podium.p1.username}</div>
+              <div className="text-center w-full">
+                <div className="text-sm font-bold truncate max-w-full px-1" title={podium.p1.username}>
+                  {podium.p1.username}
+                </div>
                 <div className="text-xs font-mono">{podium.p1.lapTime.toFixed(3)}s</div>
               </div>
             </div>
@@ -73,8 +77,8 @@ export const Podium = ({ podium }: PodiumProps) => {
         )}
 
         {podium.p3 && (
-          <div className="flex flex-col items-center">
-            <div className="bg-gradient-to-br from-orange-300 to-orange-400 text-orange-900 p-4 rounded-t-lg w-28 h-20 flex flex-col items-center justify-center border-2 border-orange-500 shadow-lg">
+          <div className="flex flex-col items-center max-w-[120px]">
+            <div className="bg-gradient-to-br from-orange-300 to-orange-400 text-orange-900 p-3 rounded-t-lg w-full h-20 flex flex-col items-center justify-center border-2 border-orange-500 shadow-lg">
               <img
                 src={podium.p3.avatarUrl || getRedditAvatarUrl(podium.p3.userId)}
                 alt={podium.p3.username}
@@ -91,8 +95,10 @@ export const Podium = ({ podium }: PodiumProps) => {
                   }
                 }}
               />
-              <div className="text-center">
-                <div className="text-sm font-bold">{podium.p3.username}</div>
+              <div className="text-center w-full">
+                <div className="text-xs font-bold truncate max-w-full px-1" title={podium.p3.username}>
+                  {podium.p3.username}
+                </div>
                 <div className="text-xs font-mono">{podium.p3.lapTime.toFixed(3)}s</div>
               </div>
             </div>

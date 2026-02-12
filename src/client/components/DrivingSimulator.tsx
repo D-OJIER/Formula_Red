@@ -255,12 +255,10 @@ export const DrivingSimulator = ({
         newY = clampedY;
 
         // Check checkpoints - only check the active checkpoint
-        setCheckpoints((prevCheckpoints) => {
-          if (activeCheckpointIndex >= prevCheckpoints.length) {
-            return prevCheckpoints; // All checkpoints passed
-          }
-          
-          const activeCheckpoint = prevCheckpoints[activeCheckpointIndex];
+        // Use a ref to track active checkpoint index to avoid stale closures
+        const currentActiveIndex = activeCheckpointIndex;
+        if (currentActiveIndex < checkpoints.length) {
+          const activeCheckpoint = checkpoints[currentActiveIndex];
           if (activeCheckpoint && !activeCheckpoint.passed) {
             const dist = Math.sqrt(
               Math.pow(newX - activeCheckpoint.x, 2) + Math.pow(newY - activeCheckpoint.y, 2)
@@ -274,29 +272,27 @@ export const DrivingSimulator = ({
               
               checkpointTimesRef.current.push(checkpointTime);
               
-              // Mark this checkpoint as passed and activate the next one
-              const updated = prevCheckpoints.map((cp, idx) => {
-                if (idx === activeCheckpointIndex) {
-                  return {
-                    ...cp,
-                    passed: true,
-                    time: checkpointTime,
-                  };
-                }
-                return cp;
+              // Mark this checkpoint as passed
+              setCheckpoints((prevCheckpoints) => {
+                return prevCheckpoints.map((cp, idx) => {
+                  if (idx === currentActiveIndex) {
+                    return {
+                      ...cp,
+                      passed: true,
+                      time: checkpointTime,
+                    };
+                  }
+                  return cp;
+                });
               });
               
-              // Activate next checkpoint
-              if (activeCheckpointIndex < prevCheckpoints.length - 1) {
-                setActiveCheckpointIndex(activeCheckpointIndex + 1);
+              // Immediately activate next checkpoint
+              if (currentActiveIndex < checkpoints.length - 1) {
+                setActiveCheckpointIndex(currentActiveIndex + 1);
               }
-              
-              return updated;
             }
           }
-          
-          return prevCheckpoints;
-        });
+        }
 
         // Check if car is on track (simplified check - distance to nearest track point)
         let onTrack = false;
