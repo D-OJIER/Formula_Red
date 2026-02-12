@@ -7,7 +7,7 @@ import { CarConfigForm } from './components/CarConfigForm';
 import { Leaderboard } from './components/Leaderboard';
 import { Podium } from './components/Podium';
 import { DrivingSimulator } from './components/DrivingSimulator';
-import type { CarConfig } from '../shared/types';
+import { useCarConfig } from './hooks/useCarConfig';
 
 const App = () => {
   const {
@@ -24,13 +24,7 @@ const App = () => {
     submitOfficialRun,
   } = useFormulaRed();
 
-  const [carConfig, setCarConfig] = useState<CarConfig>({
-    downforce: 50,
-    gearBias: 50,
-    tyres: 'medium',
-    drivingStyle: 50,
-    tacticalAbility: 50,
-  });
+  const [carConfig, setCarConfig] = useCarConfig();
 
   const [mode, setMode] = useState<'practice' | 'official'>('practice');
   const raceFrozen = race?.frozen || false;
@@ -96,7 +90,7 @@ const App = () => {
         
         // Use showToast instead of alert
         const { showToast } = await import('@devvit/web/client');
-        showToast(`Error: ${errorMessage}`, { appearance: 'error' });
+        showToast(`Error: ${errorMessage}`);
       }
     }
   };
@@ -110,20 +104,27 @@ const App = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h1 className="text-3xl font-bold text-[#d93900] mb-2">
-            🏎️ Formula Red - Driver Edition
+        <div className="f1-card p-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 opacity-10">
+            <div className="f1-checkered-bg w-full h-full"></div>
+          </div>
+          <h1 className="text-4xl font-bold text-[#e10600] mb-2 relative z-10 flex items-center gap-3">
+            <span className="text-5xl">🏎️</span>
+            <span className="bg-gradient-to-r from-[#e10600] to-[#b83000] bg-clip-text text-transparent">
+              FORMULA RED
+            </span>
+            <span className="text-2xl text-gray-600 font-normal">Driver Edition</span>
           </h1>
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <span>Welcome, {username || 'Driver'}!</span>
-            <span>•</span>
-            <span>Track ID: {trackId}</span>
-            <span>•</span>
-            <span className={`font-semibold ${
-              raceFrozen ? 'text-gray-400' : 'text-green-600'
+          <div className="flex items-center gap-4 text-sm text-gray-700 font-semibold relative z-10">
+            <span className="f1-badge">Welcome, {username || 'Driver'}!</span>
+            <span className="text-gray-400">•</span>
+            <span className="text-gray-600">Track: {trackId}</span>
+            <span className="text-gray-400">•</span>
+            <span className={`f1-badge ${
+              raceFrozen ? 'bg-gray-500' : 'bg-green-600'
             }`}>
               {raceFrozen ? 'Race Frozen' : 'Race Active'}
             </span>
@@ -132,30 +133,32 @@ const App = () => {
 
         {/* Track Info */}
         {trackConfig && (
-          <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg shadow-lg p-6 border-2 border-gray-200">
-            <h2 className="text-2xl font-bold mb-4 text-gray-800 flex items-center gap-2">
-              <span>🏁</span> Track Information
-            </h2>
+          <div className="f1-card p-6">
+            <div className="f1-card-header rounded-t-lg -m-6 mb-4">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <span>🏁</span> Track Information
+              </h2>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <div className="text-xs text-blue-600 font-semibold uppercase mb-1">Length</div>
-                <div className="text-xl font-bold text-blue-900">{trackConfig.length}m</div>
+              <div className="f1-stat-box">
+                <div className="f1-stat-label text-blue-600">Length</div>
+                <div className="f1-stat-value text-blue-900">{trackConfig.length}m</div>
               </div>
-              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                <div className="text-xs text-purple-600 font-semibold uppercase mb-1">Corner Density</div>
-                <div className="text-xl font-bold text-purple-900">{trackConfig.cornerDensity}%</div>
+              <div className="f1-stat-box border-purple-400">
+                <div className="f1-stat-label text-purple-600">Corner Density</div>
+                <div className="f1-stat-value text-purple-900">{trackConfig.cornerDensity}%</div>
               </div>
-              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                <div className="text-xs text-green-600 font-semibold uppercase mb-1">Surface Grip</div>
-                <div className="text-xl font-bold text-green-900">{trackConfig.surfaceGrip}%</div>
+              <div className="f1-stat-box border-green-400">
+                <div className="f1-stat-label text-green-600">Surface Grip</div>
+                <div className="f1-stat-value text-green-900">{trackConfig.surfaceGrip}%</div>
               </div>
-              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                <div className="text-xs text-orange-600 font-semibold uppercase mb-1">Width</div>
-                <div className="text-xl font-bold text-orange-900">{trackConfig.width}m</div>
+              <div className="f1-stat-box border-orange-400">
+                <div className="f1-stat-label text-orange-600">Width</div>
+                <div className="f1-stat-value text-orange-900">{trackConfig.width}m</div>
               </div>
-              <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-                <div className="text-xs text-red-600 font-semibold uppercase mb-1">Laps Required</div>
-                <div className="text-xl font-bold text-red-900">{lapsRequired}</div>
+              <div className="f1-stat-box border-red-400">
+                <div className="f1-stat-label text-red-600">Laps Required</div>
+                <div className="f1-stat-value text-red-900">{lapsRequired}</div>
               </div>
             </div>
           </div>
@@ -186,15 +189,17 @@ const App = () => {
         )}
 
         {/* Mode Selection */}
-        <div className="bg-gradient-to-r from-gray-50 to-white rounded-lg shadow-lg p-6 border-2 border-gray-200">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">Select Mode</h2>
+        <div className="f1-card p-6">
+          <div className="f1-card-header rounded-t-lg -m-6 mb-4">
+            <h2 className="text-xl font-bold">Select Mode</h2>
+          </div>
           <div className="flex gap-4">
             <button
               onClick={() => setMode('practice')}
               className={`px-8 py-4 rounded-lg font-bold text-lg transition-all transform hover:scale-105 ${
                 mode === 'practice'
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  ? 'f1-button text-white shadow-lg'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300 border-2 border-gray-300'
               }`}
             >
               🏎️ Practice Mode
@@ -204,8 +209,8 @@ const App = () => {
               disabled={hasSubmitted || raceFrozen}
               className={`px-8 py-4 rounded-lg font-bold text-lg transition-all transform hover:scale-105 ${
                 mode === 'official'
-                  ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  ? 'f1-button text-white shadow-lg'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300 border-2 border-gray-300'
               } disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
             >
               🏁 Official Race ({lapsRequired} Laps)
@@ -232,12 +237,11 @@ const App = () => {
         <div className="grid md:grid-cols-2 gap-6">
           {/* Car Config & Driving Simulator */}
           <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <CarConfigForm
-                onConfigChange={setCarConfig}
-                disabled={raceFrozen}
-              />
-            </div>
+            <CarConfigForm
+              config={carConfig}
+              onConfigChange={setCarConfig}
+              disabled={raceFrozen}
+            />
 
             {trackConfig && (
               <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg shadow-xl p-6 border-2 border-gray-700">
@@ -263,12 +267,12 @@ const App = () => {
 
           {/* Leaderboards */}
           <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="f1-card p-6">
               <Leaderboard results={dailyResults} type="daily" />
             </div>
 
             {seasonStandings.length > 0 && (
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className="f1-card p-6">
                 <Leaderboard results={seasonStandings} type="season" />
               </div>
             )}

@@ -1,35 +1,44 @@
-import type { OfficialRaceResult } from '../../shared/types';
+import type { OfficialRaceResult, SeasonStanding } from '../../shared/types';
 
 type LeaderboardProps = {
-  results: OfficialRaceResult[];
+  results: OfficialRaceResult[] | SeasonStanding[];
   type: 'daily' | 'season';
 };
 
 export const Leaderboard = ({ results, type }: LeaderboardProps) => {
   if (type === 'daily') {
+    const dailyResults = results as OfficialRaceResult[];
     return (
       <div className="space-y-2">
-        <h3 className="text-lg font-semibold">Daily Leaderboard</h3>
-        {results.length === 0 ? (
+        <div className="f1-card-header rounded-t-lg -m-6 mb-4">
+          <h3 className="text-lg font-bold">Daily Leaderboard</h3>
+        </div>
+        {dailyResults.length === 0 ? (
           <div className="text-gray-500 py-4">No results yet</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2">Pos</th>
-                  <th className="text-left p-2">Driver</th>
-                  <th className="text-right p-2">Lap Time</th>
-                  <th className="text-right p-2">Points</th>
+                <tr className="border-b-2 border-[#e10600]">
+                  <th className="text-left p-3 font-bold text-gray-800 uppercase text-xs tracking-wide">Pos</th>
+                  <th className="text-left p-3 font-bold text-gray-800 uppercase text-xs tracking-wide">Driver</th>
+                  <th className="text-right p-3 font-bold text-gray-800 uppercase text-xs tracking-wide">Race Time</th>
+                  <th className="text-right p-3 font-bold text-gray-800 uppercase text-xs tracking-wide">Points</th>
                 </tr>
               </thead>
               <tbody>
-                {results.map((result) => (
-                  <tr key={result.userId} className="border-b">
-                    <td className="p-2">{result.position || '-'}</td>
-                    <td className="p-2">{result.username}</td>
-                    <td className="p-2 text-right">{result.lapTime.toFixed(3)}s</td>
-                    <td className="p-2 text-right">{result.points || 0}</td>
+                {dailyResults.map((result, index) => (
+                  <tr key={result.userId} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                    <td className={`p-3 font-bold ${
+                      index === 0 ? 'text-yellow-600' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-600' : 'text-gray-600'
+                    }`}>
+                      {result.position || index + 1}
+                    </td>
+                    <td className="p-3 font-semibold text-gray-800">{result.username}</td>
+                    <td className="p-3 text-right font-mono text-gray-700">{result.lapTime.toFixed(3)}s</td>
+                    <td className="p-3 text-right">
+                      <span className="f1-badge">{result.points || 0}</span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -41,35 +50,42 @@ export const Leaderboard = ({ results, type }: LeaderboardProps) => {
   }
 
   // Season leaderboard
+  const seasonStandings = results as SeasonStanding[];
   return (
     <div className="space-y-2">
-      <h3 className="text-lg font-semibold">Season Leaderboard</h3>
-      {results.length === 0 ? (
+      <div className="f1-card-header rounded-t-lg -m-6 mb-4">
+        <h3 className="text-lg font-bold">Season Leaderboard</h3>
+      </div>
+      {seasonStandings.length === 0 ? (
         <div className="text-gray-500 py-4">No standings yet</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b">
-                <th className="text-left p-2">Pos</th>
-                <th className="text-left p-2">Driver</th>
-                <th className="text-right p-2">Points</th>
-                <th className="text-right p-2">Races</th>
-                <th className="text-right p-2">Wins</th>
-                <th className="text-right p-2">Podiums</th>
+              <tr className="border-b-2 border-[#e10600]">
+                <th className="text-left p-3 font-bold text-gray-800 uppercase text-xs tracking-wide">Pos</th>
+                <th className="text-left p-3 font-bold text-gray-800 uppercase text-xs tracking-wide">Driver</th>
+                <th className="text-right p-3 font-bold text-gray-800 uppercase text-xs tracking-wide">Points</th>
+                <th className="text-right p-3 font-bold text-gray-800 uppercase text-xs tracking-wide">Races</th>
+                <th className="text-right p-3 font-bold text-gray-800 uppercase text-xs tracking-wide">Wins</th>
+                <th className="text-right p-3 font-bold text-gray-800 uppercase text-xs tracking-wide">Podiums</th>
               </tr>
             </thead>
             <tbody>
-              {results.map((result, index) => (
-                <tr key={result.userId} className="border-b">
-                  <td className="p-2">{index + 1}</td>
-                  <td className="p-2">{result.username}</td>
-                  <td className="p-2 text-right font-semibold">
-                    {(result as any).totalPoints || 0}
+              {seasonStandings.map((standing, index) => (
+                <tr key={standing.userId} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                  <td className={`p-3 font-bold ${
+                    index === 0 ? 'text-yellow-600' : index === 1 ? 'text-gray-400' : index === 2 ? 'text-orange-600' : 'text-gray-600'
+                  }`}>
+                    {index + 1}
                   </td>
-                  <td className="p-2 text-right">{(result as any).racesPlayed || 0}</td>
-                  <td className="p-2 text-right">{(result as any).wins || 0}</td>
-                  <td className="p-2 text-right">{(result as any).podiumCount || 0}</td>
+                  <td className="p-3 font-semibold text-gray-800">{standing.username}</td>
+                  <td className="p-3 text-right">
+                    <span className="f1-badge">{standing.totalPoints}</span>
+                  </td>
+                  <td className="p-3 text-right text-gray-700">{standing.racesPlayed}</td>
+                  <td className="p-3 text-right text-gray-700">{standing.wins || 0}</td>
+                  <td className="p-3 text-right text-gray-700">{standing.podiumCount || 0}</td>
                 </tr>
               ))}
             </tbody>

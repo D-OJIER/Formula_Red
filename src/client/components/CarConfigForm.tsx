@@ -1,126 +1,147 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import type { CarConfig } from '../../shared/types';
 
 type CarConfigFormProps = {
+  config: CarConfig;
   onConfigChange: (config: CarConfig) => void;
   disabled?: boolean;
 };
 
 export const CarConfigForm = ({
+  config,
   onConfigChange,
   disabled = false,
 }: CarConfigFormProps) => {
-  const [config, setConfig] = useState<CarConfig>({
-    downforce: 50,
-    gearBias: 50,
-    tyres: 'medium',
-    drivingStyle: 50,
-    tacticalAbility: 50,
-  });
-
   useEffect(() => {
     onConfigChange(config);
   }, [config, onConfigChange]);
 
+  const tyreColors = {
+    soft: 'bg-red-100 border-red-400 text-red-800',
+    medium: 'bg-yellow-100 border-yellow-400 text-yellow-800',
+    hard: 'bg-blue-100 border-blue-400 text-blue-800',
+  };
+
   return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold">Car Configuration</h3>
+    <div className="space-y-6 f1-card p-6">
+      <div className="f1-card-header rounded-t-lg -m-6 mb-4">
+        <h3 className="text-lg font-bold flex items-center gap-2">
+          🏎️ Car Configuration
+        </h3>
+      </div>
       
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div>
-          <label className="block text-sm font-medium mb-1">
-            Downforce: {config.downforce}
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-bold text-gray-800 uppercase tracking-wide">
+              Downforce
+            </label>
+            <span className="f1-badge">{config.downforce}</span>
+          </div>
           <input
             type="range"
             min="0"
             max="100"
             value={config.downforce}
             onChange={(e) =>
-              setConfig({ ...config, downforce: parseInt(e.target.value) })
+              onConfigChange({ ...config, downforce: parseInt(e.target.value) })
             }
             disabled={disabled}
-            className="w-full"
+            className="f1-slider"
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-600 mt-2 italic">
             Affects grip and cornering speed
           </p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">
-            Gear Bias: {config.gearBias}
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-bold text-gray-800 uppercase tracking-wide">
+              Gear Bias
+            </label>
+            <span className="f1-badge">{config.gearBias}</span>
+          </div>
           <input
             type="range"
             min="0"
             max="100"
             value={config.gearBias}
             onChange={(e) =>
-              setConfig({ ...config, gearBias: parseInt(e.target.value) })
+              onConfigChange({ ...config, gearBias: parseInt(e.target.value) })
             }
             disabled={disabled}
-            className="w-full"
+            className="f1-slider"
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-600 mt-2 italic">
             Affects acceleration curve and max speed
           </p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Tyres</label>
+          <label className="block text-sm font-bold text-gray-800 uppercase tracking-wide mb-2">
+            Tyres
+          </label>
           <select
             value={config.tyres}
             onChange={(e) =>
-              setConfig({
+              onConfigChange({
                 ...config,
                 tyres: e.target.value as 'soft' | 'medium' | 'hard',
               })
             }
             disabled={disabled}
-            className="w-full p-2 border rounded"
+            className={`f1-select w-full ${tyreColors[config.tyres]}`}
           >
-            <option value="soft">Soft (More grip, less durable)</option>
-            <option value="medium">Medium (Balanced)</option>
-            <option value="hard">Hard (Less grip, more durable)</option>
+            <option value="soft">🔴 Soft (More grip, less durable)</option>
+            <option value="medium">🟡 Medium (Balanced)</option>
+            <option value="hard">🔵 Hard (Less grip, more durable)</option>
           </select>
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">
-            Driving Style: {config.drivingStyle}
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-bold text-gray-800 uppercase tracking-wide">
+              Driving Style
+            </label>
+            <span className="f1-badge">{config.drivingStyle}</span>
+          </div>
           <input
             type="range"
             min="0"
             max="100"
             value={config.drivingStyle}
             onChange={(e) =>
-              setConfig({ ...config, drivingStyle: parseInt(e.target.value) })
+              onConfigChange({ ...config, drivingStyle: parseInt(e.target.value) })
             }
             disabled={disabled}
-            className="w-full"
+            className="f1-slider"
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-600 mt-2 italic">
             Affects boost power and stability
           </p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">
-            Tactical Ability: {config.tacticalAbility}
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-bold text-gray-800 uppercase tracking-wide">
+              Tactical Ability
+            </label>
+            <span className="f1-badge">{config.tacticalAbility}</span>
+          </div>
           <input
             type="range"
             min="0"
             max="100"
             value={config.tacticalAbility}
             onChange={(e) =>
-              setConfig({ ...config, tacticalAbility: parseInt(e.target.value) })
+              onConfigChange({ ...config, tacticalAbility: parseInt(e.target.value) })
             }
             disabled={disabled}
-            className="w-full"
+            className="f1-slider"
           />
+          <p className="text-xs text-gray-600 mt-2 italic">
+            Strategic decision making and race craft
+          </p>
         </div>
       </div>
     </div>
