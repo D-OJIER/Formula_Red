@@ -45,6 +45,7 @@ export const DrivingSimulator = ({
   const checkpointTimesRef = useRef<number[]>([]);
   const replayDataRef = useRef<Array<{ time: number; x: number; y: number; speed: number }>>([]);
   const lapTimesRef = useRef<number[]>([]); // Track lap times in ref to avoid stale closures
+  const activeCheckpointIndexRef = useRef<number>(0); // Use ref for immediate updates
 
   const [carStartPosition, setCarStartPosition] = useState<{ x: number; y: number; angle: number }>({ x: 400, y: 300, angle: 0 });
   
@@ -100,7 +101,8 @@ export const DrivingSimulator = ({
     }));
     
     setCheckpoints(newCheckpoints);
-    setActiveCheckpointIndex(0); // Reset to first checkpoint
+    activeCheckpointIndexRef.current = 0; // Reset to first checkpoint
+    setActiveCheckpointIndex(0); // Sync state for rendering
     
     // Reset car position to start
     setCarState({
@@ -255,8 +257,8 @@ export const DrivingSimulator = ({
         newY = clampedY;
 
         // Check checkpoints - only check the active checkpoint
-        // Use a ref to track active checkpoint index to avoid stale closures
-        const currentActiveIndex = activeCheckpointIndex;
+        // Use ref for immediate updates without waiting for state
+        const currentActiveIndex = activeCheckpointIndexRef.current;
         if (currentActiveIndex < checkpoints.length) {
           const activeCheckpoint = checkpoints[currentActiveIndex];
           if (activeCheckpoint && !activeCheckpoint.passed) {
@@ -286,9 +288,10 @@ export const DrivingSimulator = ({
                 });
               });
               
-              // Immediately activate next checkpoint
+              // Immediately activate next checkpoint using ref (synchronous update)
               if (currentActiveIndex < checkpoints.length - 1) {
-                setActiveCheckpointIndex(currentActiveIndex + 1);
+                activeCheckpointIndexRef.current = currentActiveIndex + 1;
+                setActiveCheckpointIndex(currentActiveIndex + 1); // Sync state for rendering
               }
             }
           }
@@ -325,7 +328,7 @@ export const DrivingSimulator = ({
         }
 
         // Check for lap completion (all checkpoints passed - check if active index is beyond last checkpoint)
-        const allCheckpointsPassed = activeCheckpointIndex >= checkpoints.length || checkpoints.every((cp) => cp.passed);
+        const allCheckpointsPassed = activeCheckpointIndexRef.current >= checkpoints.length || checkpoints.every((cp) => cp.passed);
         let raceComplete = false;
         
         if (allCheckpointsPassed && lapStartTimeRef.current && prev.speed > 10) {
@@ -387,7 +390,8 @@ export const DrivingSimulator = ({
               checkpointTimesRef.current = [];
               replayDataRef.current = [];
               setCheckpoints((prev) => prev.map((cp) => ({ ...cp, passed: false, time: null })));
-              setActiveCheckpointIndex(0); // Reset to first checkpoint
+              activeCheckpointIndexRef.current = 0; // Reset to first checkpoint
+              setActiveCheckpointIndex(0); // Sync state for rendering
               setCurrentLap(newLapNumber);
             }
           } else {
@@ -490,16 +494,18 @@ export const DrivingSimulator = ({
       }
 
       // Draw checkpoints - only show the active checkpoint
+      // Use ref for immediate rendering
+      const currentActiveCheckpointIndex = activeCheckpointIndexRef.current;
       checkpoints.forEach((checkpoint, index) => {
         // Only show if it's the active checkpoint or if it's been passed
-        if (index === activeCheckpointIndex || checkpoint.passed) {
+        if (index === currentActiveCheckpointIndex || checkpoint.passed) {
           ctx.fillStyle = checkpoint.passed ? '#00ff00' : '#ffff00';
           ctx.beginPath();
           ctx.arc(checkpoint.x, checkpoint.y, 15, 0, Math.PI * 2);
           ctx.fill();
           
           // Draw a pulsing effect for active checkpoint
-          if (!checkpoint.passed && index === activeCheckpointIndex) {
+          if (!checkpoint.passed && index === currentActiveCheckpointIndex) {
             ctx.strokeStyle = '#ffff00';
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -614,7 +620,7 @@ export const DrivingSimulator = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [carState, isDriving, lapTime, checkpoints, currentLap, bestLapTime, lapTimes, totalRaceTime, mode, lapsRequired, getPerformanceModifier, trackConfig, generateReplayHash, onRaceComplete, trackPath, activeCheckpointIndex]);
+  }, [carState, isDriving, lapTime, checkpoints, currentLap, bestLapTime, lapTimes, totalRaceTime, mode, lapsRequired, getPerformanceModifier, trackConfig, generateReplayHash, onRaceComplete, trackPath]);
 
   // Update lap time
   useEffect(() => {
@@ -641,7 +647,8 @@ export const DrivingSimulator = ({
     replayDataRef.current = [];
     lapTimesRef.current = []; // Reset ref too
     setCheckpoints((prev) => prev.map((cp) => ({ ...cp, passed: false, time: null })));
-    setActiveCheckpointIndex(0); // Reset to first checkpoint
+    activeCheckpointIndexRef.current = 0; // Reset to first checkpoint
+    setActiveCheckpointIndex(0); // Sync state for rendering
     setLapTime(0);
     setCurrentLap(0);
     setLapTimes([]);
@@ -676,7 +683,8 @@ export const DrivingSimulator = ({
       replayDataRef.current = [];
       lapTimesRef.current = [];
       setCheckpoints((prev) => prev.map((cp) => ({ ...cp, passed: false, time: null })));
-      setActiveCheckpointIndex(0);
+      activeCheckpointIndexRef.current = 0;
+      setActiveCheckpointIndex(0); // Sync state for rendering
       setLapTime(0);
       setCurrentLap(0);
       setLapTimes([]);
@@ -706,7 +714,8 @@ export const DrivingSimulator = ({
     checkpointTimesRef.current = [];
     replayDataRef.current = [];
     setCheckpoints((prev) => prev.map((cp) => ({ ...cp, passed: false, time: null })));
-    setActiveCheckpointIndex(0);
+    activeCheckpointIndexRef.current = 0;
+    setActiveCheckpointIndex(0); // Sync state for rendering
   };
 
   return (
