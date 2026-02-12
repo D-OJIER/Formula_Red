@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { CarConfig, TrackConfig } from '../../shared/types';
+import { getTrackPath } from '../utils/trackPathGenerator';
 
 type DrivingSimulatorProps = {
   carConfig: CarConfig;
@@ -45,6 +46,8 @@ export const DrivingSimulator = ({
   const replayDataRef = useRef<Array<{ time: number; x: number; y: number; speed: number }>>([]);
   const lapTimesRef = useRef<number[]>([]); // Track lap times in ref to avoid stale closures
 
+  const [carStartPosition, setCarStartPosition] = useState<{ x: number; y: number; angle: number }>({ x: 400, y: 300, angle: 0 });
+  
   const [carState, setCarState] = useState<CarState>({
     x: 400,
     y: 300,
@@ -64,31 +67,52 @@ export const DrivingSimulator = ({
   const [raceStartTime, setRaceStartTime] = useState<number | null>(null);
   const [totalRaceTime, setTotalRaceTime] = useState<number>(0);
   const [activeCheckpointIndex, setActiveCheckpointIndex] = useState<number>(0);
+  const [trackPath, setTrackPath] = useState<{ points: Array<{ x: number; y: number; angle: number }>; checkpoints: Array<{ x: number; y: number; angle: number }> } | null>(null);
 
-  // Track layout (circular track for simplicity)
-  const trackRadius = 200;
-  const trackCenterX = 400;
-  const trackCenterY = 300;
-
-  // Initialize checkpoints around the track
+  // Generate track path based on track config
   useEffect(() => {
-    const numCheckpoints = Math.max(4, Math.floor(trackConfig.cornerDensity / 20));
-    const newCheckpoints: Checkpoint[] = [];
+    if (!canvasRef.current) return;
     
-    for (let i = 0; i < numCheckpoints; i++) {
-      const angle = (i / numCheckpoints) * Math.PI * 2;
-      newCheckpoints.push({
-        id: i,
-        x: trackCenterX + Math.cos(angle) * trackRadius,
-        y: trackCenterY + Math.sin(angle) * trackRadius,
-        passed: false,
-        time: null,
-      });
+    const canvas = canvasRef.current;
+    const path = getTrackPath(trackConfig, canvas.width, canvas.height);
+    setTrackPath(path);
+    
+    // Set car starting position to first checkpoint or first track point
+    if (path.checkpoints.length > 0) {
+      const start = path.checkpoints[0];
+      if (start) {
+        setCarStartPosition({ x: start.x, y: start.y, angle: start.angle });
+      }
+    } else if (path.points.length > 0) {
+      const start = path.points[0];
+      if (start) {
+        setCarStartPosition({ x: start.x, y: start.y, angle: start.angle });
+      }
     }
+    
+    // Initialize checkpoints from track path
+    const newCheckpoints: Checkpoint[] = path.checkpoints.map((cp, i) => ({
+      id: i,
+      x: cp.x,
+      y: cp.y,
+      passed: false,
+      time: null,
+    }));
     
     setCheckpoints(newCheckpoints);
     setActiveCheckpointIndex(0); // Reset to first checkpoint
-  }, [trackConfig.cornerDensity]);
+    
+    // Reset car position to start
+    setCarState({
+      x: carStartPosition.x,
+      y: carStartPosition.y,
+      angle: carStartPosition.angle,
+      speed: 0,
+      throttle: 0,
+      brake: 0,
+      steering: 0,
+    });
+  }, [trackConfig]);
 
   // Calculate performance modifiers from car config
   const getPerformanceModifier = useCallback(() => {
@@ -274,11 +298,18 @@ export const DrivingSimulator = ({
           return prevCheckpoints;
         });
 
-        // Check if car is on track
-        const distFromCenter = Math.sqrt(
-          Math.pow(newX - trackCenterX, 2) + Math.pow(newY - trackCenterY, 2)
-        );
-        const onTrack = distFromCenter > trackRadius - 30 && distFromCenter < trackRadius + 30;
+        // Check if car is on track (simplified check - distance to nearest track point)
+        let onTrack = false;
+        if (trackPath && trackPath.points.length > 0) {
+          let minDist = Infinity;
+          for (const point of trackPath.points) {
+            const dist = Math.sqrt(Math.pow(newX - point.x, 2) + Math.pow(newY - point.y, 2));
+            minDist = Math.min(minDist, dist);
+          }
+          // Track width from config (scaled to pixels, ~30-50px)
+          const trackWidthPixels = (trackConfig.width / 10) * 3;
+          onTrack = minDist < trackWidthPixels;
+        }
 
         // Slow down if off track
         if (!onTrack) {
@@ -385,19 +416,82 @@ export const DrivingSimulator = ({
       ctx.fillStyle = '#1a1a1a';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw track
-      ctx.strokeStyle = '#333';
-      ctx.lineWidth = 60;
-      ctx.beginPath();
-      ctx.arc(trackCenterX, trackCenterY, trackRadius, 0, Math.PI * 2);
-      ctx.stroke();
+      // Draw track path
+      if (trackPath && trackPath.points.length > 0) {
+        const trackWidthPixels = (trackConfig.width / 10) * 3; // Scale track width to pixels
+        
+        // Draw track outer edge (grass/barrier)
+        ctx.strokeStyle = '#2a2a2a';
+        ctx.lineWidth = trackWidthPixels + 20;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        trackPath.points.forEach((point, i) => {
+          if (i === 0) {
+            ctx.moveTo(point.x, point.y);
+          } else {
+            ctx.lineTo(point.x, point.y);
+          }
+        });
+        // Close the loop
+        if (trackPath.points.length > 0 && trackPath.points[0]) {
+          ctx.lineTo(trackPath.points[0].x, trackPath.points[0].y);
+        }
+        ctx.stroke();
 
-      // Draw track surface
-      ctx.strokeStyle = '#444';
-      ctx.lineWidth = 50;
-      ctx.beginPath();
-      ctx.arc(trackCenterX, trackCenterY, trackRadius, 0, Math.PI * 2);
-      ctx.stroke();
+        // Draw track surface
+        ctx.strokeStyle = '#444';
+        ctx.lineWidth = trackWidthPixels;
+        ctx.beginPath();
+        trackPath.points.forEach((point, i) => {
+          if (i === 0) {
+            ctx.moveTo(point.x, point.y);
+          } else {
+            ctx.lineTo(point.x, point.y);
+          }
+        });
+        // Close the loop
+        if (trackPath.points.length > 0 && trackPath.points[0]) {
+          ctx.lineTo(trackPath.points[0].x, trackPath.points[0].y);
+        }
+        ctx.stroke();
+
+        // Draw center line
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 10]);
+        ctx.beginPath();
+        trackPath.points.forEach((point, i) => {
+          if (i === 0) {
+            ctx.moveTo(point.x, point.y);
+          } else {
+            ctx.lineTo(point.x, point.y);
+          }
+        });
+        // Close the loop
+        if (trackPath.points.length > 0 && trackPath.points[0]) {
+          ctx.lineTo(trackPath.points[0].x, trackPath.points[0].y);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else {
+        // Fallback: draw simple circle if track path not ready
+        const trackCenterX = canvas.width / 2;
+        const trackCenterY = canvas.height / 2;
+        const trackRadius = 200;
+        
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 60;
+        ctx.beginPath();
+        ctx.arc(trackCenterX, trackCenterY, trackRadius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#444';
+        ctx.lineWidth = 50;
+        ctx.beginPath();
+        ctx.arc(trackCenterX, trackCenterY, trackRadius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
 
       // Draw checkpoints - only show the active checkpoint
       checkpoints.forEach((checkpoint, index) => {
@@ -419,14 +513,7 @@ export const DrivingSimulator = ({
         }
       });
 
-      // Draw track markings
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([10, 10]);
-      ctx.beginPath();
-      ctx.arc(trackCenterX, trackCenterY, trackRadius, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      // Track markings are now drawn above as part of the track path
 
       // Draw car
       const car = carState;
@@ -443,8 +530,9 @@ export const DrivingSimulator = ({
       ctx.fillRect(-10, -6, 20, 12);
 
       // Speed indicator
-      ctx.fillStyle = car.speed > maxSpeed * 0.8 ? '#00ff00' : '#ffff00';
-      ctx.fillRect(-12, -10, (car.speed / maxSpeed) * 24, 2);
+      const speedRatio = maxSpeed > 0 ? Math.abs(car.speed) / maxSpeed : 0;
+      ctx.fillStyle = speedRatio > 0.8 ? '#00ff00' : '#ffff00';
+      ctx.fillRect(-12, -10, speedRatio * 24, 2);
 
       ctx.restore();
 
@@ -530,7 +618,7 @@ export const DrivingSimulator = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [carState, isDriving, lapTime, checkpoints, currentLap, bestLapTime, lapTimes, totalRaceTime, mode, lapsRequired, getPerformanceModifier, trackConfig, generateReplayHash, onRaceComplete]);
+  }, [carState, isDriving, lapTime, checkpoints, currentLap, bestLapTime, lapTimes, totalRaceTime, mode, lapsRequired, getPerformanceModifier, trackConfig, generateReplayHash, onRaceComplete, trackPath, activeCheckpointIndex]);
 
   // Update lap time
   useEffect(() => {
@@ -562,15 +650,25 @@ export const DrivingSimulator = ({
     setCurrentLap(0);
     setLapTimes([]);
     setTotalRaceTime(0);
+    // Reset car to start position
+    setCarState({
+      x: carStartPosition.x,
+      y: carStartPosition.y,
+      angle: carStartPosition.angle,
+      speed: 0,
+      throttle: 0,
+      brake: 0,
+      steering: 0,
+    });
   };
 
   const resetPractice = () => {
     if (mode === 'practice') {
       setIsDriving(false);
       setCarState({
-        x: 400,
-        y: 300,
-        angle: 0,
+        x: carStartPosition.x,
+        y: carStartPosition.y,
+        angle: carStartPosition.angle,
         speed: 0,
         throttle: 0,
         brake: 0,
@@ -594,9 +692,9 @@ export const DrivingSimulator = ({
   const stopDriving = () => {
     setIsDriving(false);
     setCarState({
-      x: 400,
-      y: 300,
-      angle: 0,
+      x: carStartPosition.x,
+      y: carStartPosition.y,
+      angle: carStartPosition.angle,
       speed: 0,
       throttle: 0,
       brake: 0,
