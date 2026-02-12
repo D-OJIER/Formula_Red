@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { CarSetup, TrackConfig, DailyModifier } from '../../shared/types';
+import type { CarConfig, TrackConfig } from '../../shared/types';
 
 type DrivingSimulatorProps = {
-  carSetup: CarSetup;
+  carConfig: CarConfig;
   trackConfig: TrackConfig;
-  modifier: DailyModifier;
-  onLapComplete: (lapTime: number) => void;
+  mode: 'practice' | 'official';
+  onLapComplete?: (lapTime: number, checkpointTimes: number[], replayHash: string) => void;
   disabled?: boolean;
 };
 
@@ -19,18 +19,27 @@ type CarState = {
   steering: number;
 };
 
+type Checkpoint = {
+  id: number;
+  x: number;
+  y: number;
+  passed: boolean;
+  time: number | null;
+};
+
 export const DrivingSimulator = ({
-  carSetup,
+  carConfig,
   trackConfig,
-  modifier,
+  mode,
   onLapComplete,
   disabled = false,
 }: DrivingSimulatorProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
   const keysRef = useRef<Set<string>>(new Set());
-  const startTimeRef = useRef<number | null>(null);
   const lapStartTimeRef = useRef<number | null>(null);
+  const checkpointTimesRef = useRef<number[]>([]);
+  const replayDataRef = useRef<Array<{ time: number; x: number; y: number; speed: number }>>([]);
 
   const [carState, setCarState] = useState<CarState>({
     x: 400,
@@ -44,34 +53,66 @@ export const DrivingSimulator = ({
 
   const [lapTime, setLapTime] = useState<number>(0);
   const [isDriving, setIsDriving] = useState(false);
-  const [checkpointProgress, setCheckpointProgress] = useState(0);
+  const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
+  const [currentLap, setCurrentLap] = useState(0);
+  const [bestLapTime, setBestLapTime] = useState<number | null>(null);
 
   // Track layout (circular track for simplicity)
   const trackRadius = 200;
   const trackCenterX = 400;
   const trackCenterY = 300;
 
-  // Calculate performance modifiers from car setup
-  const getPerformanceModifier = useCallback(() => {
-    const downforceMod = (carSetup.downforce - 50) * 0.02; // -1 to +1
-    const suspensionMod = (carSetup.suspension - 50) * 0.015;
-    const gearRatioMod = (carSetup.gearRatio - 50) * 0.01;
+  // Initialize checkpoints around the track
+  useEffect(() => {
+    const numCheckpoints = Math.max(4, Math.floor(trackConfig.cornerDensity / 20));
+    const newCheckpoints: Checkpoint[] = [];
     
-    const modifierEffects: Record<DailyModifier, number> = {
-      RAIN: -0.3,
-      DIRTY_AIR: -0.1,
-      HIGH_TYRE_WEAR: -0.15,
-      SAFETY_CAR: -0.05,
-      LOW_GRIP: -0.2,
+    for (let i = 0; i < numCheckpoints; i++) {
+      const angle = (i / numCheckpoints) * Math.PI * 2;
+      newCheckpoints.push({
+        id: i,
+        x: trackCenterX + Math.cos(angle) * trackRadius,
+        y: trackCenterY + Math.sin(angle) * trackRadius,
+        passed: false,
+        time: null,
+      });
+    }
+    
+    setCheckpoints(newCheckpoints);
+  }, [trackConfig.cornerDensity]);
+
+  // Calculate performance modifiers from car config
+  const getPerformanceModifier = useCallback(() => {
+    const downforceMod = (carConfig.downforce - 50) * 0.02; // -1 to +1
+    const gearBiasMod = (carConfig.gearBias - 50) * 0.015;
+    const drivingStyleMod = (carConfig.drivingStyle - 50) * 0.01;
+    
+    const tyreMods: Record<string, number> = {
+      soft: 0.05, // More grip
+      medium: 0,
+      hard: -0.03, // Less grip but more durable
     };
 
-    return 1 + downforceMod + suspensionMod + gearRatioMod + modifierEffects[modifier];
-  }, [carSetup, modifier]);
+    return 1 + downforceMod + gearBiasMod + drivingStyleMod + (tyreMods[carConfig.tyres] || 0);
+  }, [carConfig]);
+
+  // Generate replay hash
+  const generateReplayHash = useCallback((replayData: Array<{ time: number; x: number; y: number; speed: number }>): string => {
+    // Simple hash function (in production, use crypto.subtle.digest)
+    const dataString = JSON.stringify(replayData);
+    let hash = 0;
+    for (let i = 0; i < dataString.length; i++) {
+      const char = dataString.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(16).padStart(32, '0');
+  }, []);
 
   // Handle keyboard input
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (disabled) return;
+      if (disabled || !isDriving) return;
       keysRef.current.add(e.key.toLowerCase());
     };
 
@@ -86,21 +127,21 @@ export const DrivingSimulator = ({
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [disabled]);
+  }, [disabled, isDriving]);
 
   // Game loop
   useEffect(() => {
-    if (!canvasRef.current || disabled) return;
+    if (!canvasRef.current || disabled || !isDriving) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     const performanceMod = getPerformanceModifier();
-    const maxSpeed = 200 * performanceMod;
+    const maxSpeed = 200 * performanceMod * (trackConfig.surfaceGrip / 100);
     const acceleration = 5 * performanceMod;
     const deceleration = 8;
-    const turnSpeed = 0.05 * (1 + (carSetup.suspension - 50) * 0.01);
+    const turnSpeed = 0.05 * (1 + (carConfig.downforce - 50) * 0.01);
 
     const updateCar = () => {
       setCarState((prev) => {
@@ -137,7 +178,37 @@ export const DrivingSimulator = ({
         const newX = prev.x + Math.cos(newAngle) * (newSpeed * 0.1);
         const newY = prev.y + Math.sin(newAngle) * (newSpeed * 0.1);
 
-        // Check if car is on track (simple circular track check)
+        // Check checkpoints
+        setCheckpoints((prevCheckpoints) => {
+          const updated = prevCheckpoints.map((checkpoint) => {
+            if (checkpoint.passed) return checkpoint;
+            
+            const dist = Math.sqrt(
+              Math.pow(newX - checkpoint.x, 2) + Math.pow(newY - checkpoint.y, 2)
+            );
+            
+            if (dist < 30) {
+              const currentTime = Date.now();
+              const checkpointTime = lapStartTimeRef.current
+                ? (currentTime - lapStartTimeRef.current) / 1000
+                : 0;
+              
+              checkpointTimesRef.current.push(checkpointTime);
+              
+              return {
+                ...checkpoint,
+                passed: true,
+                time: checkpointTime,
+              };
+            }
+            
+            return checkpoint;
+          });
+          
+          return updated;
+        });
+
+        // Check if car is on track
         const distFromCenter = Math.sqrt(
           Math.pow(newX - trackCenterX, 2) + Math.pow(newY - trackCenterY, 2)
         );
@@ -148,17 +219,45 @@ export const DrivingSimulator = ({
           newSpeed *= 0.8;
         }
 
-        // Update checkpoint progress (simple circular progress)
-        const angle = Math.atan2(newY - trackCenterY, newX - trackCenterX);
-        const normalizedAngle = (angle + Math.PI) / (2 * Math.PI);
-        setCheckpointProgress(normalizedAngle);
+        // Record replay data
+        if (lapStartTimeRef.current) {
+          const currentTime = Date.now();
+          const replayTime = (currentTime - lapStartTimeRef.current) / 1000;
+          replayDataRef.current.push({
+            time: replayTime,
+            x: newX,
+            y: newY,
+            speed: newSpeed,
+          });
+        }
 
-        // Check for lap completion (full circle)
-        if (lapStartTimeRef.current && normalizedAngle > 0.95 && prev.speed > 10) {
+        // Check for lap completion (all checkpoints passed)
+        const allCheckpointsPassed = checkpoints.every((cp) => cp.passed);
+        if (allCheckpointsPassed && lapStartTimeRef.current && prev.speed > 10) {
           const currentTime = Date.now();
           const completedLapTime = (currentTime - lapStartTimeRef.current) / 1000;
-          onLapComplete(completedLapTime);
+          
+          // Update best lap time in practice mode
+          if (mode === 'practice') {
+            if (bestLapTime === null || completedLapTime < bestLapTime) {
+              setBestLapTime(completedLapTime);
+            }
+          }
+          
+          // Generate replay hash
+          const replayHash = generateReplayHash(replayDataRef.current);
+          
+          // Call onLapComplete if in official mode
+          if (mode === 'official' && onLapComplete) {
+            onLapComplete(completedLapTime, [...checkpointTimesRef.current], replayHash);
+          }
+          
+          // Reset for next lap
           lapStartTimeRef.current = currentTime;
+          checkpointTimesRef.current = [];
+          replayDataRef.current = [];
+          setCheckpoints((prev) => prev.map((cp) => ({ ...cp, passed: false, time: null })));
+          setCurrentLap((prev) => prev + 1);
         }
 
         return {
@@ -192,6 +291,14 @@ export const DrivingSimulator = ({
       ctx.arc(trackCenterX, trackCenterY, trackRadius, 0, Math.PI * 2);
       ctx.stroke();
 
+      // Draw checkpoints
+      checkpoints.forEach((checkpoint) => {
+        ctx.fillStyle = checkpoint.passed ? '#00ff00' : '#ffff00';
+        ctx.beginPath();
+        ctx.arc(checkpoint.x, checkpoint.y, 15, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
       // Draw track markings
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = 2;
@@ -223,18 +330,22 @@ export const DrivingSimulator = ({
 
       // Draw UI overlay
       ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(10, 10, 200, 120);
+      ctx.fillRect(10, 10, 250, mode === 'practice' ? 160 : 140);
 
       ctx.fillStyle = '#fff';
       ctx.font = '16px monospace';
-      ctx.fillText(`Speed: ${Math.round(carState.speed)} km/h`, 20, 35);
-      ctx.fillText(`Lap Time: ${lapTime.toFixed(2)}s`, 20, 55);
-      ctx.fillText(`Progress: ${Math.round(checkpointProgress * 100)}%`, 20, 75);
-      ctx.fillText(`Modifier: ${modifier}`, 20, 95);
+      ctx.fillText(`Mode: ${mode === 'practice' ? 'Practice' : 'Official'}`, 20, 35);
+      ctx.fillText(`Speed: ${Math.round(carState.speed)} km/h`, 20, 55);
+      ctx.fillText(`Lap Time: ${lapTime.toFixed(2)}s`, 20, 75);
+      ctx.fillText(`Lap: ${currentLap + 1}`, 20, 95);
+      if (mode === 'practice' && bestLapTime !== null) {
+        ctx.fillText(`Best: ${bestLapTime.toFixed(2)}s`, 20, 115);
+      }
+      ctx.fillText(`Checkpoints: ${checkpoints.filter((cp) => cp.passed).length}/${checkpoints.length}`, 20, mode === 'practice' ? 135 : 115);
       ctx.fillText(
         `Controls: ↑/W=Gas ↓/S=Brake ←→/A/D=Steer`,
         20,
-        115
+        mode === 'practice' ? 155 : 135
       );
     };
 
@@ -244,16 +355,14 @@ export const DrivingSimulator = ({
       animationFrameRef.current = requestAnimationFrame(gameLoop);
     };
 
-    if (isDriving) {
-      gameLoop();
-    }
+    gameLoop();
 
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [carState, isDriving, lapTime, checkpointProgress, modifier, getPerformanceModifier, disabled, onLapComplete]);
+  }, [carState, isDriving, lapTime, checkpoints, currentLap, bestLapTime, mode, getPerformanceModifier, trackConfig, generateReplayHash, onLapComplete]);
 
   // Update lap time
   useEffect(() => {
@@ -271,7 +380,10 @@ export const DrivingSimulator = ({
   const startDriving = () => {
     setIsDriving(true);
     lapStartTimeRef.current = Date.now();
-    startTimeRef.current = Date.now();
+    checkpointTimesRef.current = [];
+    replayDataRef.current = [];
+    setCheckpoints((prev) => prev.map((cp) => ({ ...cp, passed: false, time: null })));
+    setLapTime(0);
   };
 
   const stopDriving = () => {
@@ -287,7 +399,9 @@ export const DrivingSimulator = ({
     });
     lapStartTimeRef.current = null;
     setLapTime(0);
-    setCheckpointProgress(0);
+    checkpointTimesRef.current = [];
+    replayDataRef.current = [];
+    setCheckpoints((prev) => prev.map((cp) => ({ ...cp, passed: false, time: null })));
   };
 
   return (
@@ -306,7 +420,7 @@ export const DrivingSimulator = ({
               disabled={disabled}
               className="bg-[#d93900] text-white px-8 py-4 rounded-lg text-xl font-bold hover:bg-[#b83000] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Start Driving
+              Start {mode === 'practice' ? 'Practice' : 'Race'}
             </button>
           </div>
         )}
@@ -322,7 +436,9 @@ export const DrivingSimulator = ({
           </button>
           <div className="flex-1 bg-gray-100 p-3 rounded">
             <div className="text-sm text-gray-600">
-              Use arrow keys or WASD to drive. Complete a full lap to record your time!
+              {mode === 'practice' 
+                ? 'Practice mode: Unlimited laps, times shown locally only.'
+                : 'Official race mode: Complete a lap to submit your time!'}
             </div>
           </div>
         </div>
@@ -336,6 +452,11 @@ export const DrivingSimulator = ({
             <li>↓ or S - Brake</li>
             <li>← → or A D - Steer</li>
           </ul>
+          {mode === 'practice' && (
+            <p className="text-sm text-gray-600 mt-2">
+              Practice mode allows unlimited laps. Your best time is tracked locally.
+            </p>
+          )}
         </div>
       )}
     </div>

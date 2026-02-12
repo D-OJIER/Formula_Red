@@ -1,124 +1,89 @@
 import { useCallback, useEffect, useState } from 'react';
 import type {
   InitResponse,
-  SubmitPracticeResponse,
-  SubmitRaceResponse,
-  GetRaceDayResponse,
-  GetPracticeLeaderboardResponse,
-  GetRaceLeaderboardResponse,
-  GetSeasonStandingsResponse,
-  GetCurrentSessionResponse,
+  SubmitOfficialRunResponse,
+  GetDailyRaceResponse,
+  GetDailyLeaderboardResponse,
+  GetSeasonLeaderboardResponse,
   GetPodiumResponse,
 } from '../../shared/api';
 import type {
-  PracticeSession,
-  RaceResult,
-  RaceDay,
-  SeasonStanding,
-  SessionType,
+  OfficialRaceResult,
+  DailyRace,
+  TrackConfig,
+  CarConfig,
+  PlayerResultView,
   PodiumResult,
-  DriverSubmission,
 } from '../../shared/types';
 
 interface GameState {
   username: string | null;
-  currentSession: SessionType;
-  date: string;
-  raceDay: RaceDay | null;
-  practiceSessions: PracticeSession[];
-  raceResults: RaceResult[];
-  seasonStandings: SeasonStanding[];
+  trackId: string;
+  trackConfig: TrackConfig | null;
+  race: DailyRace | null;
+  dailyResults: OfficialRaceResult[];
+  seasonStandings: any[];
   podium: PodiumResult;
   loading: boolean;
+  hasSubmitted: boolean;
+  playerResult: PlayerResultView | null;
 }
 
 export const useFormulaRed = () => {
   const [state, setState] = useState<GameState>({
     username: null,
-    currentSession: 'CLOSED',
-    date: '',
-    raceDay: null,
-    practiceSessions: [],
-    raceResults: [],
+    trackId: '',
+    trackConfig: null,
+    race: null,
+    dailyResults: [],
     seasonStandings: [],
     podium: { p1: null, p2: null, p3: null },
     loading: true,
+    hasSubmitted: false,
+    playerResult: null,
   });
 
   const refreshData = useCallback(async () => {
     try {
-      // Get current session
-      const sessionRes = await fetch('/api/session');
-      if (!sessionRes.ok) throw new Error('Failed to get session');
-      const sessionData: GetCurrentSessionResponse = await sessionRes.json();
+      const trackId = new Date().toISOString().slice(0, 10).replace(/-/g, '');
 
-      // Get race day
-      const raceDayRes = await fetch(`/api/race/day?date=${sessionData.date}`);
-      if (!raceDayRes.ok) throw new Error('Failed to get race day');
-      const raceDayData: GetRaceDayResponse = await raceDayRes.json();
+      // Get race info
+      const raceRes = await fetch(`/api/race/daily?trackId=${trackId}`);
+      const raceData: GetDailyRaceResponse = await raceRes.json();
 
-      // Get practice leaderboard if in practice session
-      let practiceSessions: PracticeSession[] = [];
-      if (
-        sessionData.session === 'P1' ||
-        sessionData.session === 'P2' ||
-        sessionData.session === 'P3' ||
-        sessionData.session === 'P4'
-      ) {
-        const practiceRes = await fetch(
-          `/api/practice/leaderboard?date=${sessionData.date}&sessionType=${sessionData.session}`
-        );
-        if (practiceRes.ok) {
-          const practiceData: GetPracticeLeaderboardResponse =
-            await practiceRes.json();
-          practiceSessions = practiceData.sessions || [];
-        }
-      }
+      // Get daily leaderboard
+      const leaderboardRes = await fetch(`/api/leaderboard/daily?trackId=${trackId}`);
+      const leaderboardData: GetDailyLeaderboardResponse = await leaderboardRes.json();
 
-      // Get race leaderboard
-      const raceRes = await fetch(
-        `/api/race/leaderboard?date=${sessionData.date}`
-      );
-      let raceResults: RaceResult[] = [];
-      if (raceRes.ok) {
-        const raceData: GetRaceLeaderboardResponse = await raceRes.json();
-        raceResults = raceData.results || [];
-      }
-
-      // Get season standings
-      const seasonRes = await fetch('/api/season/standings');
-      let seasonStandings: SeasonStanding[] = [];
-      if (seasonRes.ok) {
-        const seasonData: GetSeasonStandingsResponse = await seasonRes.json();
-        seasonStandings = seasonData.standings || [];
-      }
+      // Get season leaderboard
+      const seasonRes = await fetch('/api/leaderboard/season');
+      const seasonData: GetSeasonLeaderboardResponse = await seasonRes.json();
 
       // Get podium
-      const podiumRes = await fetch(
-        `/api/race/podium?date=${sessionData.date}`
-      );
-      let podium: PodiumResult = { p1: null, p2: null, p3: null };
-      if (podiumRes.ok) {
-        const podiumData: GetPodiumResponse = await podiumRes.json();
-        podium = podiumData.podium || { p1: null, p2: null, p3: null };
-      }
+      const podiumRes = await fetch(`/api/race/podium?trackId=${trackId}`);
+      const podiumData: GetPodiumResponse = await podiumRes.json();
+
+      // Check if user has submitted
+      const hasSubmitted = raceData.race?.results?.some(
+        (r) => r.userId === state.username
+      ) || false;
 
       setState((prev) => ({
         ...prev,
-        currentSession: sessionData.session,
-        date: sessionData.date,
-        raceDay: raceDayData.raceDay,
-        practiceSessions,
-        raceResults,
-        seasonStandings,
-        podium,
+        trackId,
+        race: raceData.race,
+        trackConfig: raceData.race?.trackConfig || prev.trackConfig,
+        dailyResults: leaderboardData.results || [],
+        seasonStandings: seasonData.standings || [],
+        podium: podiumData.podium || { p1: null, p2: null, p3: null },
+        hasSubmitted,
         loading: false,
       }));
     } catch (err) {
       console.error('Failed to refresh data', err);
       setState((prev) => ({ ...prev, loading: false }));
     }
-  }, []);
+  }, [state.username]);
 
   useEffect(() => {
     const init = async () => {
@@ -128,34 +93,15 @@ export const useFormulaRed = () => {
         const data: InitResponse = await res.json();
         if (data.type !== 'init') throw new Error('Unexpected response');
         
-        // Load all data in parallel
-        const [raceDayRes, practiceRes, raceRes, seasonRes, podiumRes] = await Promise.all([
-          fetch(`/api/race/day?date=${data.date}`),
-          data.currentSession === 'P1' || data.currentSession === 'P2' || data.currentSession === 'P3' || data.currentSession === 'P4'
-            ? fetch(`/api/practice/leaderboard?date=${data.date}&sessionType=${data.currentSession}`)
-            : Promise.resolve(null),
-          fetch(`/api/race/leaderboard?date=${data.date}`),
-          fetch('/api/season/standings'),
-          fetch(`/api/race/podium?date=${data.date}`),
-        ]);
-
-        const raceDayData: GetRaceDayResponse = raceDayRes.ok ? await raceDayRes.json() : { raceDay: null };
-        const practiceData: GetPracticeLeaderboardResponse = practiceRes?.ok ? await practiceRes.json() : { sessions: [] };
-        const raceData: GetRaceLeaderboardResponse = raceRes.ok ? await raceRes.json() : { results: [] };
-        const seasonData: GetSeasonStandingsResponse = seasonRes.ok ? await seasonRes.json() : { standings: [] };
-        const podiumData: GetPodiumResponse = podiumRes.ok ? await podiumRes.json() : { podium: { p1: null, p2: null, p3: null } };
-
-        setState({
+        setState((prev) => ({
+          ...prev,
           username: data.username,
-          currentSession: data.currentSession,
-          date: data.date,
-          raceDay: raceDayData.raceDay,
-          practiceSessions: practiceData.sessions || [],
-          raceResults: raceData.results || [],
-          seasonStandings: seasonData.standings || [],
-          podium: podiumData.podium || { p1: null, p2: null, p3: null },
+          trackId: data.trackId,
+          trackConfig: data.trackConfig,
           loading: false,
-        });
+        }));
+        
+        await refreshData();
       } catch (err) {
         console.error('Failed to init game', err);
         setState((prev) => ({ ...prev, loading: false }));
@@ -164,49 +110,38 @@ export const useFormulaRed = () => {
     void init();
   }, []);
 
-  const submitPractice = useCallback(
-    async (submission: {
-      carSetup: DriverSubmission['carSetup'];
-      strategy: DriverSubmission['strategy'];
-    }) => {
+  const submitOfficialRun = useCallback(
+    async (
+      lapTime: number,
+      checkpointTimes: number[],
+      replayHash: string,
+      config: CarConfig
+    ) => {
       try {
-        const res = await fetch('/api/practice/submit', {
+        const res = await fetch('/api/submit-official-run', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(submission),
+          body: JSON.stringify({
+            lapTime,
+            checkpointTimes,
+            replayHash,
+            config,
+          }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: SubmitPracticeResponse = await res.json();
+        const data: SubmitOfficialRunResponse = await res.json();
         if (!data.success) {
           throw new Error(data.error || 'Submission failed');
         }
+        
+        setState((prev) => ({
+          ...prev,
+          hasSubmitted: true,
+          playerResult: data.result || null,
+        }));
+        
         await refreshData();
-        return data.lapTime || 0;
-      } catch (err) {
-        throw err;
-      }
-    },
-    [refreshData]
-  );
-
-  const submitRace = useCallback(
-    async (submission: {
-      carSetup: DriverSubmission['carSetup'];
-      strategy: DriverSubmission['strategy'];
-    }) => {
-      try {
-        const res = await fetch('/api/race/submit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(submission),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: SubmitRaceResponse = await res.json();
-        if (!data.success) {
-          throw new Error(data.error || 'Submission failed');
-        }
-        await refreshData();
-        return data.lapTime || 0;
+        return data.result;
       } catch (err) {
         throw err;
       }
@@ -216,8 +151,7 @@ export const useFormulaRed = () => {
 
   return {
     ...state,
-    submitPractice,
-    submitRace,
+    submitOfficialRun,
     refreshData,
   } as const;
 };

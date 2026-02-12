@@ -10,11 +10,11 @@ export const Splash = () => {
     <div className="flex relative flex-col justify-center items-center min-h-screen gap-4 bg-gradient-to-b from-red-50 to-white">
       <div className="flex flex-col items-center gap-4">
         <h1 className="text-4xl font-bold text-center text-[#d93900]">
-          🏎️ Formula Red
+          🏎️ Formula Red - Driver Edition
         </h1>
         <p className="text-base text-center text-gray-600 max-w-md">
-          Compete in daily Formula Red races! Submit your car setup and strategy
-          during practice sessions, then race for the podium.
+          Drive your Formula Red car! Practice unlimited laps, then submit your
+          official race time. Compete daily and climb the season leaderboard.
         </p>
       </div>
       <div className="flex items-center justify-center mt-5">

@@ -3,57 +3,50 @@ import './index.css';
 import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useFormulaRed } from './hooks/useFormulaRed';
-import { SubmissionForm } from './components/SubmissionForm';
+import { CarConfigForm } from './components/CarConfigForm';
 import { Leaderboard } from './components/Leaderboard';
 import { Podium } from './components/Podium';
 import { DrivingSimulator } from './components/DrivingSimulator';
-import type { DriverSubmission } from '../shared/types';
+import type { CarConfig } from '../shared/types';
 
 const App = () => {
   const {
     username,
-    currentSession,
-    date,
-    raceDay,
-    practiceSessions,
-    raceResults,
+    trackId,
+    trackConfig,
+    race,
+    dailyResults,
     seasonStandings,
     podium,
     loading,
-    submitPractice,
-    submitRace,
+    hasSubmitted,
+    playerResult,
+    submitOfficialRun,
   } = useFormulaRed();
 
-  const isPractice = currentSession === 'P1' || currentSession === 'P2' || currentSession === 'P3' || currentSession === 'P4';
-  const isRace = currentSession === 'RACE';
-  const canSubmit = isPractice || isRace;
-  const raceFrozen = raceDay?.frozen || false;
-
-  const [carSetup, setCarSetup] = useState<DriverSubmission['carSetup']>({
+  const [carConfig, setCarConfig] = useState<CarConfig>({
     downforce: 50,
-    suspension: 50,
-    gearRatio: 50,
-    tirePressure: 50,
-    brakeBias: 50,
+    gearBias: 50,
+    tyres: 'medium',
+    drivingStyle: 50,
+    tacticalAbility: 50,
   });
 
-  const handleLapComplete = async (lapTime: number) => {
-    if (!canSubmit || raceFrozen) return;
-    
-    const strategy = {
-      fuelLoad: 50,
-      tireCompound: 'medium' as const,
-      pitStrategy: 'no-pit' as const,
-    };
+  const [mode, setMode] = useState<'practice' | 'official'>('practice');
+  const raceFrozen = race?.frozen || false;
 
-    try {
-      if (isRace) {
-        await submitRace({ carSetup, strategy });
-      } else {
-        await submitPractice({ carSetup, strategy });
+  const handleLapComplete = async (
+    lapTime: number,
+    checkpointTimes: number[],
+    replayHash: string
+  ) => {
+    if (mode === 'official' && !hasSubmitted && !raceFrozen) {
+      try {
+        await submitOfficialRun(lapTime, checkpointTimes, replayHash, carConfig);
+      } catch (error) {
+        console.error('Failed to submit official run:', error);
+        alert(error instanceof Error ? error.message : 'Submission failed');
       }
-    } catch (error) {
-      console.error('Failed to submit lap time:', error);
     }
   };
 
@@ -71,43 +64,41 @@ const App = () => {
         {/* Header */}
         <div className="bg-white rounded-lg shadow p-6">
           <h1 className="text-3xl font-bold text-[#d93900] mb-2">
-            🏎️ Formula Red
+            🏎️ Formula Red - Driver Edition
           </h1>
           <div className="flex items-center gap-4 text-sm text-gray-600">
             <span>Welcome, {username || 'Driver'}!</span>
             <span>•</span>
-            <span>Date: {date}</span>
+            <span>Track ID: {trackId}</span>
             <span>•</span>
             <span className={`font-semibold ${
-              currentSession === 'RACE' ? 'text-red-600' :
-              isPractice ? 'text-blue-600' :
-              'text-gray-400'
+              raceFrozen ? 'text-gray-400' : 'text-green-600'
             }`}>
-              Session: {currentSession}
+              {raceFrozen ? 'Race Frozen' : 'Race Active'}
             </span>
           </div>
         </div>
 
         {/* Track Info */}
-        {raceDay && (
+        {trackConfig && (
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold mb-4">Track Information</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <div className="text-sm text-gray-600">Length</div>
-                <div className="text-lg font-semibold">{raceDay.trackConfig.length}m</div>
+                <div className="text-lg font-semibold">{trackConfig.length}m</div>
               </div>
               <div>
-                <div className="text-sm text-gray-600">Corners</div>
-                <div className="text-lg font-semibold">{raceDay.trackConfig.corners}</div>
+                <div className="text-sm text-gray-600">Corner Density</div>
+                <div className="text-lg font-semibold">{trackConfig.cornerDensity}%</div>
               </div>
               <div>
-                <div className="text-sm text-gray-600">Surface</div>
-                <div className="text-lg font-semibold capitalize">{raceDay.trackConfig.surface}</div>
+                <div className="text-sm text-gray-600">Surface Grip</div>
+                <div className="text-lg font-semibold">{trackConfig.surfaceGrip}%</div>
               </div>
               <div>
-                <div className="text-sm text-gray-600">Modifier</div>
-                <div className="text-lg font-semibold">{raceDay.modifier}</div>
+                <div className="text-sm text-gray-600">Width</div>
+                <div className="text-lg font-semibold">{trackConfig.width}m</div>
               </div>
             </div>
           </div>
@@ -120,90 +111,102 @@ const App = () => {
           </div>
         )}
 
-        {/* Driving Simulator */}
-        {raceDay && canSubmit && !raceFrozen && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">🏎️ Drive Your Car</h2>
-            <DrivingSimulator
-              carSetup={carSetup}
-              trackConfig={raceDay.trackConfig}
-              modifier={raceDay.modifier}
-              onLapComplete={handleLapComplete}
-              disabled={raceFrozen}
-            />
+        {/* Player Result */}
+        {playerResult && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+            <h2 className="text-xl font-semibold mb-4 text-green-800">
+              Your Official Result
+            </h2>
+            <div className="space-y-2">
+              <div className="text-lg">
+                <span className="font-semibold">Rank:</span> {playerResult.rank}
+              </div>
+              <div className="text-lg">
+                <span className="font-semibold">Lap Time:</span> {playerResult.lapTime.toFixed(3)}s
+              </div>
+            </div>
           </div>
         )}
 
+        {/* Mode Selection */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Select Mode</h2>
+          <div className="flex gap-4">
+            <button
+              onClick={() => setMode('practice')}
+              className={`px-6 py-3 rounded font-semibold ${
+                mode === 'practice'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Practice Mode
+            </button>
+            <button
+              onClick={() => setMode('official')}
+              disabled={hasSubmitted || raceFrozen}
+              className={`px-6 py-3 rounded font-semibold ${
+                mode === 'official'
+                  ? 'bg-[#d93900] text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              Official Race
+              {hasSubmitted && ' (Submitted)'}
+            </button>
+          </div>
+          {hasSubmitted && (
+            <p className="text-sm text-gray-600 mt-2">
+              You have already submitted your official run for today.
+            </p>
+          )}
+          {raceFrozen && (
+            <p className="text-sm text-gray-600 mt-2">
+              Race is frozen. Official submissions are closed.
+            </p>
+          )}
+        </div>
+
         {/* Main Content Grid */}
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Submission Form */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">
-              {isPractice ? 'Practice Submission' : isRace ? 'Race Submission' : 'Session Closed'}
-            </h2>
-            {canSubmit && !raceFrozen ? (
-              <SubmissionForm
-                onSubmit={isRace ? submitRace : submitPractice}
+          {/* Car Config & Driving Simulator */}
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <CarConfigForm
+                onConfigChange={setCarConfig}
                 disabled={raceFrozen}
-                sessionType={currentSession}
-                onSetupChange={setCarSetup}
               />
-            ) : (
-              <div className="text-gray-500">
-                {raceFrozen ? 'Race is frozen. Submissions are closed.' : 'No active session. Check back during practice or race times.'}
+            </div>
+
+            {trackConfig && (
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-xl font-semibold mb-4">
+                  {mode === 'practice' ? '🏎️ Practice Driving' : '🏁 Official Race'}
+                </h2>
+                <DrivingSimulator
+                  carConfig={carConfig}
+                  trackConfig={trackConfig}
+                  mode={mode}
+                  onLapComplete={handleLapComplete}
+                  disabled={raceFrozen || (mode === 'official' && hasSubmitted)}
+                />
               </div>
             )}
           </div>
 
-          {/* Leaderboard */}
-          <div className="bg-white rounded-lg shadow p-6">
-            {isPractice ? (
-              <Leaderboard
-                practiceSessions={practiceSessions}
-                type="practice"
-              />
-            ) : (
-              <Leaderboard raceResults={raceResults} type="race" />
+          {/* Leaderboards */}
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <Leaderboard results={dailyResults} type="daily" />
+            </div>
+
+            {seasonStandings.length > 0 && (
+              <div className="bg-white rounded-lg shadow p-6">
+                <Leaderboard results={seasonStandings} type="season" />
+              </div>
             )}
           </div>
         </div>
-
-        {/* Season Standings */}
-        {seasonStandings.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Season Standings</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-2">Pos</th>
-                    <th className="text-left p-2">Driver</th>
-                    <th className="text-right p-2">Points</th>
-                    <th className="text-right p-2">Races</th>
-                    <th className="text-right p-2">Wins</th>
-                    <th className="text-right p-2">Podiums</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {seasonStandings
-                    .sort((a, b) => b.totalPoints - a.totalPoints)
-                    .map((standing, index) => (
-                      <tr key={standing.userId} className="border-b">
-                        <td className="p-2">{index + 1}</td>
-                        <td className="p-2">{standing.username}</td>
-                        <td className="p-2 text-right font-semibold">
-                          {standing.totalPoints}
-                        </td>
-                        <td className="p-2 text-right">{standing.racesPlayed}</td>
-                        <td className="p-2 text-right">{standing.wins}</td>
-                        <td className="p-2 text-right">{standing.podiumCount}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

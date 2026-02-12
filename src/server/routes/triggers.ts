@@ -2,7 +2,6 @@ import { Hono } from 'hono';
 import type { OnAppInstallRequest, TriggerResponse } from '@devvit/web/shared';
 import { context } from '@devvit/web/server';
 import { createPost } from '../core/post';
-import { runDailyFinalization } from '../jobs/finalizationJob';
 
 export const triggers = new Hono();
 
@@ -34,6 +33,7 @@ triggers.post('/on-app-install', async (c) => {
 // This should be configured in devvit.json to run daily at 00:00 UTC
 triggers.post('/daily-finalization', async (c) => {
   try {
+    const { runDailyFinalization } = await import('../jobs/finalizationJob');
     await runDailyFinalization();
     return c.json<TriggerResponse>(
       {

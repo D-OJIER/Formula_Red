@@ -9,13 +9,13 @@ export async function runDailyFinalization(): Promise<void> {
   // Finalize yesterday's race (since we're running at 00:00 UTC)
   const yesterday = new Date();
   yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-  const date = getDateString(yesterday);
+  const trackId = getDateString(yesterday);
 
   try {
-    await finalizeRaceDay(date);
-    console.log(`Successfully finalized race for ${date}`);
+    await finalizeRaceDay(trackId);
+    console.log(`Successfully finalized race for ${trackId}`);
   } catch (error) {
-    console.error(`Failed to finalize race for ${date}:`, error);
+    console.error(`Failed to finalize race for ${trackId}:`, error);
     throw error;
   }
 }

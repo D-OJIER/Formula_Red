@@ -1,3 +1,2 @@
-export * from './practiceStorage';
-export * from './raceStorage';
+export * from './dailyRaceStorage';
 export * from './seasonStorage';

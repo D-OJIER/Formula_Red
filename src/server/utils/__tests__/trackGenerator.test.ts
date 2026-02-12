@@ -1,39 +1,39 @@
 import { describe, it, expect } from 'vitest';
-import { generateTrack, generateTrackSeed } from '../trackGenerator';
+import { generateDailyTrack } from '../trackGenerator';
 
-describe('Track Generator', () => {
-  it('should generate deterministic tracks for the same seed', () => {
-    const seed = 'test-track-seed';
-    const track1 = generateTrack(seed);
-    const track2 = generateTrack(seed);
+describe('Daily Track Generator', () => {
+  it('should generate deterministic tracks for the same trackId', () => {
+    const trackId = '20240101';
+    const track1 = generateDailyTrack(trackId);
+    const track2 = generateDailyTrack(trackId);
 
     expect(track1).toEqual(track2);
   });
 
-  it('should generate different tracks for different seeds', () => {
-    const track1 = generateTrack('seed1');
-    const track2 = generateTrack('seed2');
+  it('should generate different tracks for different trackIds', () => {
+    const track1 = generateDailyTrack('20240101');
+    const track2 = generateDailyTrack('20240102');
 
-    expect(track1.seed).not.toBe(track2.seed);
+    expect(track1.trackId).not.toBe(track2.trackId);
   });
 
   it('should generate valid track configurations', () => {
-    const track = generateTrack('test-seed');
+    const track = generateDailyTrack('20240101');
 
-    expect(track.seed).toBe('test-seed');
+    expect(track.trackId).toBe('20240101');
     expect(track.length).toBeGreaterThanOrEqual(3000);
     expect(track.length).toBeLessThanOrEqual(7000);
-    expect(track.corners).toBeGreaterThanOrEqual(8);
-    expect(track.corners).toBeLessThanOrEqual(20);
-    expect(track.elevation).toBeGreaterThanOrEqual(0);
-    expect(track.elevation).toBeLessThanOrEqual(150);
-    expect(['asphalt', 'concrete', 'mixed']).toContain(track.surface);
-    expect(track.difficulty).toBeGreaterThanOrEqual(20);
-    expect(track.difficulty).toBeLessThanOrEqual(90);
-  });
-
-  it('should generate track seed for date', () => {
-    const seed = generateTrackSeed('20240101');
-    expect(seed).toBe('track:20240101');
+    expect(track.cornerDensity).toBeGreaterThanOrEqual(20);
+    expect(track.cornerDensity).toBeLessThanOrEqual(80);
+    expect(track.straightRatio).toBeGreaterThanOrEqual(30);
+    expect(track.straightRatio).toBeLessThanOrEqual(70);
+    expect(track.width).toBeGreaterThanOrEqual(10);
+    expect(track.width).toBeLessThanOrEqual(15);
+    expect(track.surfaceGrip).toBeGreaterThanOrEqual(60);
+    expect(track.surfaceGrip).toBeLessThanOrEqual(95);
+    expect(track.weatherProbability).toBeGreaterThanOrEqual(0);
+    expect(track.weatherProbability).toBeLessThanOrEqual(30);
+    expect(Array.isArray(track.elevationProfile)).toBe(true);
+    expect(track.elevationProfile.length).toBeGreaterThan(0);
   });
 });

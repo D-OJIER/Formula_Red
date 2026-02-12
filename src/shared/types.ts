@@ -1,70 +1,43 @@
-// Core domain models for Formula Red
-
-export type RaceDay = {
-  date: string; // YYYYMMDD format
-  trackSeed: string;
-  trackConfig: TrackConfig;
-  modifier: DailyModifier;
-  frozen: boolean;
-  results?: RaceResult[];
-};
+// Core domain models for Formula Red - Driver Edition
 
 export type TrackConfig = {
-  seed: string;
+  trackId: string; // YYYYMMDD format
   length: number; // Track length in meters
-  corners: number; // Number of corners
-  elevation: number; // Elevation change in meters
-  surface: 'asphalt' | 'concrete' | 'mixed';
-  difficulty: number; // 0-100 difficulty rating
+  cornerDensity: number; // 0-100, density of corners
+  straightRatio: number; // 0-100, ratio of straight sections
+  width: number; // Track width in meters
+  surfaceGrip: number; // 0-100, grip level
+  elevationProfile: number[]; // Array of elevation points
+  weatherProbability: number; // 0-100, chance of weather effects
 };
 
-export type PracticeSession = {
-  sessionType: 'P1' | 'P2' | 'P3' | 'P4';
-  date: string; // YYYYMMDD format
-  userId: string;
-  submission: DriverSubmission;
-  lapTime: number; // Lap time in seconds
-  timestamp: number; // Submission timestamp
+export type CarConfig = {
+  downforce: number; // 0-100
+  gearBias: number; // 0-100 (affects acceleration curve and max speed)
+  tyres: 'soft' | 'medium' | 'hard';
+  drivingStyle: number; // 0-100 (affects boost power and stability)
+  tacticalAbility: number; // 0-100
 };
 
-export type RaceResult = {
+export type DailyRace = {
+  trackId: string; // YYYYMMDD format
+  trackConfig: TrackConfig;
+  frozen: boolean; // Whether race is frozen (end of day)
+  results: OfficialRaceResult[];
+};
+
+export type OfficialRaceResult = {
   userId: string;
   username: string;
-  submission: DriverSubmission;
-  lapTime: number; // Official lap time in seconds
+  trackId: string;
+  lapTime: number; // Lap time in seconds
   position: number; // Final position (1-based)
   points: number; // Points earned
+  config: CarConfig;
+  checkpointTimes: number[]; // Times at each checkpoint
+  replayHash: string; // Hash of replay data for anti-cheat
   timestamp: number; // Submission timestamp
 };
-
-export type DriverSubmission = {
-  userId: string;
-  username: string;
-  carSetup: CarSetup;
-  strategy: RaceStrategy;
-  timestamp: number;
-};
-
-export type CarSetup = {
-  downforce: number; // 0-100
-  suspension: number; // 0-100
-  gearRatio: number; // 0-100
-  tirePressure: number; // 0-100
-  brakeBias: number; // 0-100
-};
-
-export type RaceStrategy = {
-  fuelLoad: number; // 0-100
-  tireCompound: 'soft' | 'medium' | 'hard';
-  pitStrategy: 'no-pit' | 'one-stop' | 'two-stop';
-};
-
-export type DailyModifier =
-  | 'RAIN'
-  | 'DIRTY_AIR'
-  | 'HIGH_TYRE_WEAR'
-  | 'SAFETY_CAR'
-  | 'LOW_GRIP';
 
 export type SeasonStanding = {
   userId: string;
@@ -76,10 +49,24 @@ export type SeasonStanding = {
   positions: number[]; // Array of finishing positions
 };
 
-export type SessionType = 'P1' | 'P2' | 'P3' | 'P4' | 'RACE' | 'CLOSED';
+export type SubmissionPayload = {
+  userId: string;
+  username: string;
+  trackId: string;
+  lapTime: number;
+  config: CarConfig;
+  checkpointTimes: number[];
+  replayHash: string;
+};
+
+export type PlayerResultView = {
+  rank: number;
+  lapTime: number;
+  leaderboard: OfficialRaceResult[];
+};
 
 export type PodiumResult = {
-  p1: RaceResult | null;
-  p2: RaceResult | null;
-  p3: RaceResult | null;
+  p1: OfficialRaceResult | null;
+  p2: OfficialRaceResult | null;
+  p3: OfficialRaceResult | null;
 };

@@ -1,56 +1,15 @@
-import type { PracticeSession, RaceResult } from '../../shared/types';
+import type { OfficialRaceResult } from '../../shared/types';
 
 type LeaderboardProps = {
-  practiceSessions?: PracticeSession[];
-  raceResults?: RaceResult[];
-  type: 'practice' | 'race';
+  results: OfficialRaceResult[];
+  type: 'daily' | 'season';
 };
 
-export const Leaderboard = ({
-  practiceSessions,
-  raceResults,
-  type,
-}: LeaderboardProps) => {
-  if (type === 'practice') {
-    const sessions = practiceSessions || [];
+export const Leaderboard = ({ results, type }: LeaderboardProps) => {
+  if (type === 'daily') {
     return (
       <div className="space-y-2">
-        <h3 className="text-lg font-semibold">Practice Leaderboard</h3>
-        {sessions.length === 0 ? (
-          <div className="text-gray-500 py-4">No results yet</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2">Pos</th>
-                  <th className="text-left p-2">Driver</th>
-                  <th className="text-right p-2">Lap Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sessions.map((session, index) => (
-                  <tr key={session.userId} className="border-b">
-                    <td className="p-2">{index + 1}</td>
-                    <td className="p-2">{session.submission.username}</td>
-                    <td className="p-2 text-right">
-                      {session.lapTime.toFixed(3)}s
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  if (type === 'race') {
-    const results = raceResults || [];
-    return (
-      <div className="space-y-2">
-        <h3 className="text-lg font-semibold">Race Leaderboard</h3>
+        <h3 className="text-lg font-semibold">Daily Leaderboard</h3>
         {results.length === 0 ? (
           <div className="text-gray-500 py-4">No results yet</div>
         ) : (
@@ -81,5 +40,42 @@ export const Leaderboard = ({
     );
   }
 
-  return <div className="text-gray-500">No results yet</div>;
+  // Season leaderboard
+  return (
+    <div className="space-y-2">
+      <h3 className="text-lg font-semibold">Season Leaderboard</h3>
+      {results.length === 0 ? (
+        <div className="text-gray-500 py-4">No standings yet</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left p-2">Pos</th>
+                <th className="text-left p-2">Driver</th>
+                <th className="text-right p-2">Points</th>
+                <th className="text-right p-2">Races</th>
+                <th className="text-right p-2">Wins</th>
+                <th className="text-right p-2">Podiums</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((result, index) => (
+                <tr key={result.userId} className="border-b">
+                  <td className="p-2">{index + 1}</td>
+                  <td className="p-2">{result.username}</td>
+                  <td className="p-2 text-right font-semibold">
+                    {(result as any).totalPoints || 0}
+                  </td>
+                  <td className="p-2 text-right">{(result as any).racesPlayed || 0}</td>
+                  <td className="p-2 text-right">{(result as any).wins || 0}</td>
+                  <td className="p-2 text-right">{(result as any).podiumCount || 0}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
 };

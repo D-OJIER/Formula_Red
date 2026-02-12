@@ -2,31 +2,21 @@ import { Hono } from 'hono';
 import { context, reddit } from '@devvit/web/server';
 import type {
   InitResponse,
-  SubmitPracticeResponse,
-  SubmitRaceResponse,
-  GetRaceDayResponse,
-  GetPracticeLeaderboardResponse,
-  GetRaceLeaderboardResponse,
-  GetSeasonStandingsResponse,
-  GetCurrentSessionResponse,
-  AdminFreezeRaceResponse,
-  AdminRecomputeResponse,
-  AdminResetPracticeResponse,
-  AdminFinalizeResponse,
+  SubmitOfficialRunResponse,
+  GetDailyRaceResponse,
+  GetDailyLeaderboardResponse,
+  GetSeasonLeaderboardResponse,
   GetPodiumResponse,
 } from '../../shared/api';
-import { handlePracticeSubmission, handleRaceSubmission, getPracticeLeaderboard, getRaceLeaderboard } from '../handlers/submissionHandler';
-import { getRaceDay } from '../storage/raceStorage';
+import { handleOfficialSubmission } from '../handlers/submissionHandler';
+import { getDailyRace } from '../storage/dailyRaceStorage';
+import { getAllOfficialResults } from '../storage/dailyRaceStorage';
 import { getSeasonStandings } from '../storage/seasonStorage';
-import { getCurrentSession, getDateString } from '../utils/sessionTime';
-import {
-  adminForceFreezeRace,
-  adminRecomputeRaceResults,
-  adminResetPracticeSessions,
-  adminFinalizeRaceDay,
-} from '../handlers/adminHandler';
+import { getDateString } from '../utils/sessionTime';
+import { getDailyLeaderboard } from '../utils/leaderboard';
 import { getPodiumFromResults } from '../utils/finalization';
-import type { DriverSubmission } from '../../shared/types';
+import type { SubmissionPayload } from '../../shared/types';
+import { generateDailyTrack } from '../utils/trackGenerator';
 
 type ErrorResponse = {
   status: 'error';
@@ -51,15 +41,25 @@ api.get('/init', async (c) => {
 
   try {
     const username = await reddit.getCurrentUsername();
-    const currentSession = getCurrentSession();
-    const date = getDateString();
+    const trackId = getDateString();
+    
+    // Get or create race
+    let race = await getDailyRace(trackId);
+    let trackConfig = null;
+    
+    if (race) {
+      trackConfig = race.trackConfig;
+    } else {
+      // Generate track config for today
+      trackConfig = generateDailyTrack(trackId);
+    }
 
     return c.json<InitResponse>({
       type: 'init',
       postId: postId,
       username: username ?? 'anonymous',
-      currentSession,
-      date,
+      trackId,
+      trackConfig,
     });
   } catch (error) {
     console.error(`API Init Error for post ${postId}:`, error);
@@ -74,36 +74,34 @@ api.get('/init', async (c) => {
   }
 });
 
-// Get current session info
-api.get('/session', async (c) => {
-  const session = getCurrentSession();
-  const date = getDateString();
-  return c.json<GetCurrentSessionResponse>({ session, date });
-});
-
-// Submit practice session
-api.post('/practice/submit', async (c) => {
+// Submit official run
+api.post('/submit-official-run', async (c) => {
   try {
     const username = await reddit.getCurrentUsername();
     const userId = context.userId || username || 'anonymous';
+    const trackId = getDateString();
 
-    const body = await c.req.json() as {
-      carSetup: DriverSubmission['carSetup'];
-      strategy: DriverSubmission['strategy'];
+    const body = await c.req.json() as Omit<SubmissionPayload, 'userId' | 'username' | 'trackId'> & {
+      lapTime: number;
+      config: SubmissionPayload['config'];
+      checkpointTimes: number[];
+      replayHash: string;
     };
 
-    const submission: DriverSubmission = {
+    const payload: SubmissionPayload = {
       userId,
       username: username || 'anonymous',
-      carSetup: body.carSetup,
-      strategy: body.strategy,
-      timestamp: Date.now(),
+      trackId,
+      lapTime: body.lapTime,
+      config: body.config,
+      checkpointTimes: body.checkpointTimes,
+      replayHash: body.replayHash,
     };
 
-    const result = await handlePracticeSubmission(submission);
-    return c.json<SubmitPracticeResponse>(result);
+    const result = await handleOfficialSubmission(payload);
+    return c.json<SubmitOfficialRunResponse>(result);
   } catch (error) {
-    return c.json<SubmitPracticeResponse>(
+    return c.json<SubmitOfficialRunResponse>(
       {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -113,107 +111,38 @@ api.post('/practice/submit', async (c) => {
   }
 });
 
-// Submit race
-api.post('/race/submit', async (c) => {
-  try {
-    const username = await reddit.getCurrentUsername();
-    const userId = context.userId || username || 'anonymous';
-
-    const body = await c.req.json() as {
-      carSetup: DriverSubmission['carSetup'];
-      strategy: DriverSubmission['strategy'];
-    };
-
-    const submission: DriverSubmission = {
-      userId,
-      username: username || 'anonymous',
-      carSetup: body.carSetup,
-      strategy: body.strategy,
-      timestamp: Date.now(),
-    };
-
-    const result = await handleRaceSubmission(submission);
-    return c.json<SubmitRaceResponse>(result);
-  } catch (error) {
-    return c.json<SubmitRaceResponse>(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      },
-      400
-    );
-  }
+// Get daily race info
+api.get('/race/daily', async (c) => {
+  const trackId = c.req.query('trackId') || getDateString();
+  const race = await getDailyRace(trackId);
+  return c.json<GetDailyRaceResponse>({ race });
 });
 
-// Get race day info
-api.get('/race/day', async (c) => {
-  const date = c.req.query('date') || getDateString();
-  const raceDay = await getRaceDay(date);
-  return c.json<GetRaceDayResponse>({ raceDay });
+// Get daily leaderboard
+api.get('/leaderboard/daily', async (c) => {
+  const trackId = c.req.query('trackId') || getDateString();
+  const allResults = await getAllOfficialResults(trackId);
+  const results = getDailyLeaderboard(allResults);
+  return c.json<GetDailyLeaderboardResponse>({ results });
 });
 
-// Get practice leaderboard
-api.get('/practice/leaderboard', async (c) => {
-  const date = c.req.query('date') || getDateString();
-  const sessionType = c.req.query('sessionType') || getCurrentSession();
-  
-  if (sessionType === 'RACE' || sessionType === 'CLOSED') {
-    return c.json<GetPracticeLeaderboardResponse>({ sessions: [] });
-  }
-
-  const sessions = await getPracticeLeaderboard(date, sessionType);
-  return c.json<GetPracticeLeaderboardResponse>({ sessions });
-});
-
-// Get race leaderboard
-api.get('/race/leaderboard', async (c) => {
-  const date = c.req.query('date') || getDateString();
-  const results = await getRaceLeaderboard(date);
-  return c.json<GetRaceLeaderboardResponse>({ results });
-});
-
-// Get season standings
-api.get('/season/standings', async (c) => {
+// Get season leaderboard
+api.get('/leaderboard/season', async (c) => {
   const standings = await getSeasonStandings();
-  return c.json<GetSeasonStandingsResponse>({ standings });
+  // Sort by totalPoints descending, then podiumCount descending
+  const sorted = standings.sort((a, b) => {
+    if (b.totalPoints !== a.totalPoints) {
+      return b.totalPoints - a.totalPoints;
+    }
+    return b.podiumCount - a.podiumCount;
+  });
+  return c.json<GetSeasonLeaderboardResponse>({ standings: sorted });
 });
 
-// Get podium for a race day
+// Get podium for a race
 api.get('/race/podium', async (c) => {
-  const date = c.req.query('date') || getDateString();
-  const raceDay = await getRaceDay(date);
-  
-  if (!raceDay || !raceDay.results) {
-    return c.json<GetPodiumResponse>({
-      podium: { p1: null, p2: null, p3: null },
-    });
-  }
-
-  const podium = getPodiumFromResults(raceDay.results);
+  const trackId = c.req.query('trackId') || getDateString();
+  const allResults = await getAllOfficialResults(trackId);
+  const podium = getPodiumFromResults(allResults);
   return c.json<GetPodiumResponse>({ podium });
-});
-
-// Admin endpoints
-api.post('/admin/freeze', async (c) => {
-  const body = await c.req.json() as { date: string };
-  const result = await adminForceFreezeRace(body.date);
-  return c.json<AdminFreezeRaceResponse>(result);
-});
-
-api.post('/admin/recompute', async (c) => {
-  const body = await c.req.json() as { date: string };
-  const result = await adminRecomputeRaceResults(body.date);
-  return c.json<AdminRecomputeResponse>(result);
-});
-
-api.post('/admin/reset-practice', async (c) => {
-  const body = await c.req.json() as { date: string };
-  const result = await adminResetPracticeSessions(body.date);
-  return c.json<AdminResetPracticeResponse>(result);
-});
-
-api.post('/admin/finalize', async (c) => {
-  const body = await c.req.json() as { date: string };
-  const result = await adminFinalizeRaceDay(body.date);
-  return c.json<AdminFinalizeResponse>(result);
 });

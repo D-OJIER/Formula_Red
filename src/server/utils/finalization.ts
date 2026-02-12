@@ -1,9 +1,9 @@
-import type { RaceDay, RaceResult, PodiumResult } from '../../shared/types';
+import type { DailyRace, OfficialRaceResult, PodiumResult } from '../../shared/types';
 import {
-  getRaceDay,
+  getDailyRace,
   freezeRace,
   updateRaceResults,
-} from '../storage/raceStorage';
+} from '../storage/dailyRaceStorage';
 import { updateUserStanding } from '../storage/seasonStorage';
 import { sortRaceResults, assignPositions } from './leaderboard';
 import { calculatePoints } from './points';
@@ -17,22 +17,22 @@ import { calculatePoints } from './points';
  * - Updates season standings
  * - Returns podium results
  */
-export async function finalizeRaceDay(date: string): Promise<PodiumResult> {
-  const raceDay = await getRaceDay(date);
-  if (!raceDay) {
-    throw new Error(`Race day ${date} not found`);
+export async function finalizeRaceDay(trackId: string): Promise<PodiumResult> {
+  const race = await getDailyRace(trackId);
+  if (!race) {
+    throw new Error(`Race ${trackId} not found`);
   }
 
-  if (raceDay.frozen) {
+  if (race.frozen) {
     // Already finalized, return existing podium
-    return getPodiumFromResults(raceDay.results || []);
+    return getPodiumFromResults(race.results || []);
   }
 
   // Freeze the race
-  await freezeRace(date);
+  await freezeRace(trackId);
 
   // Get and sort results
-  let results = raceDay.results || [];
+  let results = race.results || [];
   results = sortRaceResults(results);
   results = assignPositions(results);
 
@@ -43,7 +43,7 @@ export async function finalizeRaceDay(date: string): Promise<PodiumResult> {
   }));
 
   // Update race results
-  await updateRaceResults(date, results);
+  await updateRaceResults(trackId, results);
 
   // Update season standings
   for (const result of results) {
@@ -61,7 +61,7 @@ export async function finalizeRaceDay(date: string): Promise<PodiumResult> {
 /**
  * Extract podium results from race results
  */
-export function getPodiumFromResults(results: RaceResult[]): PodiumResult {
+export function getPodiumFromResults(results: OfficialRaceResult[]): PodiumResult {
   const sorted = sortRaceResults(results);
   return {
     p1: sorted[0] || null,

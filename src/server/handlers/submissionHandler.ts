@@ -1,182 +1,106 @@
 import type {
-  DriverSubmission,
-  PracticeSession,
-  RaceDay,
+  SubmissionPayload,
+  OfficialRaceResult,
+  PlayerResultView,
 } from '../../shared/types';
-import { getCurrentSession, getDateString } from '../utils/sessionTime';
-import { simulateLap } from '../utils/simulation';
-import { validateSubmission, validateSessionAccess } from '../utils/validation';
-import {
-  storePracticeSession,
-  getAllPracticeSessions,
-} from '../storage/practiceStorage';
-import {
-  getRaceDay,
-  storeRaceSubmission,
-  getAllRaceResults,
-} from '../storage/raceStorage';
-import { generateTrack, generateTrackSeed } from '../utils/trackGenerator';
-import { generateDailyModifier } from '../utils/modifierGenerator';
-import { sortRaceResults, sortPracticeSessions } from '../utils/leaderboard';
+import { getDailyRace, storeOfficialResult, getAllOfficialResults } from '../storage/dailyRaceStorage';
+import { generateDailyTrack } from '../utils/trackGenerator';
+import { validateSubmissionPayload, validateSubmissionAccess } from '../utils/validation';
+import { performAntiCheatCheck } from '../utils/antiCheat';
+import { getDailyLeaderboard, assignPositions } from '../utils/leaderboard';
+import { calculatePoints } from '../utils/points';
 
 /**
- * Handles a practice session submission
+ * Handles official race submission
  */
-export async function handlePracticeSubmission(
-  submission: DriverSubmission
-): Promise<{ success: boolean; lapTime: number; error?: string }> {
-  // Validate submission
-  const validation = validateSubmission(submission);
+export async function handleOfficialSubmission(
+  payload: SubmissionPayload
+): Promise<{ success: boolean; result?: PlayerResultView; error?: string }> {
+  // Validate submission payload
+  const validation = validateSubmissionPayload(payload);
   if (!validation.valid) {
     return {
       success: false,
-      lapTime: 0,
       error: validation.error,
     };
   }
 
-  const date = getDateString();
-  const currentSession = getCurrentSession();
-
-  // Validate session access
-  const sessionValidation = await validateSessionAccess(date, submission.userId, false);
-  if (!sessionValidation.valid) {
+  // Validate submission access
+  const accessValidation = await validateSubmissionAccess(payload.trackId, payload.userId);
+  if (!accessValidation.valid) {
     return {
       success: false,
-      lapTime: 0,
-      error: sessionValidation.error,
+      error: accessValidation.error,
     };
   }
 
-  // Ensure race day exists (for track config and modifier)
-  let raceDay = await getRaceDay(date);
-  if (!raceDay) {
-    const trackSeed = generateTrackSeed(date);
-    const trackConfig = generateTrack(trackSeed);
-    const modifier = generateDailyModifier(trackSeed);
-
-    raceDay = {
-      date,
-      trackSeed,
+  // Get or create race
+  let race = await getDailyRace(payload.trackId);
+  if (!race) {
+    // Create new race with track config
+    const trackConfig = generateDailyTrack(payload.trackId);
+    race = {
+      trackId: payload.trackId,
       trackConfig,
-      modifier,
-      frozen: false,
-    };
-    // Note: We don't store race day here, only when race submissions happen
-  }
-
-  // Simulate lap (practice mode adds telemetry noise)
-  const seedSuffix = `practice:${currentSession}`;
-  const lapTime = simulateLap(
-    raceDay.trackConfig,
-    raceDay.modifier,
-    submission,
-    submission.userId,
-    seedSuffix,
-    true // isPractice = true
-  );
-
-  // Store practice session
-  const practiceSession: PracticeSession = {
-    sessionType: currentSession as 'P1' | 'P2' | 'P3' | 'P4',
-    date,
-    userId: submission.userId,
-    submission,
-    lapTime,
-    timestamp: submission.timestamp,
-  };
-
-  await storePracticeSession(practiceSession);
-
-  return {
-    success: true,
-    lapTime,
-  };
-}
-
-/**
- * Handles a race submission
- */
-export async function handleRaceSubmission(
-  submission: DriverSubmission
-): Promise<{ success: boolean; lapTime: number; error?: string }> {
-  // Validate submission
-  const validation = validateSubmission(submission);
-  if (!validation.valid) {
-    return {
-      success: false,
-      lapTime: 0,
-      error: validation.error,
-    };
-  }
-
-  const date = getDateString();
-
-  // Validate session access
-  const sessionValidation = await validateSessionAccess(date, submission.userId, true);
-  if (!sessionValidation.valid) {
-    return {
-      success: false,
-      lapTime: 0,
-      error: sessionValidation.error,
-    };
-  }
-
-  // Get or create race day
-  let raceDay = await getRaceDay(date);
-  if (!raceDay) {
-    const trackSeed = generateTrackSeed(date);
-    const trackConfig = generateTrack(trackSeed);
-    const modifier = generateDailyModifier(trackSeed);
-
-    raceDay = {
-      date,
-      trackSeed,
-      trackConfig,
-      modifier,
       frozen: false,
       results: [],
     };
-    // Store initial race day
-    const { storeRaceDay } = await import('../storage/raceStorage');
-    await storeRaceDay(raceDay);
+    const { storeDailyRace } = await import('../storage/dailyRaceStorage');
+    await storeDailyRace(race);
   }
 
-  // Simulate lap (race mode, no telemetry noise)
-  const seedSuffix = 'race';
-  const lapTime = simulateLap(
-    raceDay.trackConfig,
-    raceDay.modifier,
-    submission,
-    submission.userId,
-    seedSuffix,
-    false // isPractice = false
-  );
+  // Perform anti-cheat checks
+  const antiCheatCheck = performAntiCheatCheck(payload, race.trackConfig.length);
+  if (!antiCheatCheck.valid) {
+    return {
+      success: false,
+      error: `Submission flagged: ${antiCheatCheck.reasons.join(', ')}`,
+    };
+  }
 
-  // Store race submission
-  await storeRaceSubmission(date, submission, lapTime);
+  // Create official result
+  const result: OfficialRaceResult = {
+    userId: payload.userId,
+    username: payload.username,
+    trackId: payload.trackId,
+    lapTime: payload.lapTime,
+    position: 0, // Will be set after sorting
+    points: 0, // Will be set after finalization
+    config: payload.config,
+    checkpointTimes: payload.checkpointTimes,
+    replayHash: payload.replayHash,
+    timestamp: Date.now(),
+  };
+
+  // Store result
+  await storeOfficialResult(result);
+
+  // Get updated leaderboard
+  const allResults = await getAllOfficialResults(payload.trackId);
+  const sortedResults = getDailyLeaderboard(allResults);
+  const resultsWithPositions = assignPositions(sortedResults);
+
+  // Find player's rank
+  const playerResult = resultsWithPositions.find((r) => r.userId === payload.userId);
+  if (!playerResult) {
+    return {
+      success: false,
+      error: 'Failed to retrieve player result',
+    };
+  }
+
+  // Calculate points for player
+  playerResult.points = calculatePoints(playerResult.position);
+
+  // Get top leaderboard slice (top 10)
+  const topLeaderboard = resultsWithPositions.slice(0, 10);
 
   return {
     success: true,
-    lapTime,
+    result: {
+      rank: playerResult.position,
+      lapTime: playerResult.lapTime,
+      leaderboard: topLeaderboard,
+    },
   };
-}
-
-/**
- * Get practice leaderboard for current session
- */
-export async function getPracticeLeaderboard(
-  date: string,
-  sessionType: string
-): Promise<PracticeSession[]> {
-  const sessions = await getAllPracticeSessions(date, sessionType);
-  return sortPracticeSessions(sessions);
-}
-
-/**
- * Get race leaderboard
- */
-export async function getRaceLeaderboard(date: string) {
-  const results = await getAllRaceResults(date);
-  return sortRaceResults(results);
 }

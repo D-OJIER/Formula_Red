@@ -1,4 +1,5 @@
 import type { PodiumResult } from '../../shared/types';
+import type { OfficialRaceResult } from '../../shared/types';
 
 type PodiumProps = {
   podium: PodiumResult;
