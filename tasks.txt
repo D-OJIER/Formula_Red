@@ -1,0 +1,180 @@
+FORMULA RED – DRIVER EDITION (NO TIME WINDOWS) Cursor AI Task List –
+Build Specification
+
+GLOBAL CONTEXT
+
+You are building Formula Red – Driver Edition. Players actually drive
+the car in a web racing game. Devvit is used only as the league
+controller and storage layer.
+
+Rules: - One global track per day (trackId = YYYYMMDD) - Unlimited
+practice runs (not stored in leaderboards) - Player may directly attempt
+the official race - Exactly ONE official lap per user per day - Daily
+leaderboard and season leaderboard are maintained - Track changes every
+day automatically
+
+All tasks below must be implemented in a Devvit TypeScript project and a
+small web racing client.
+
+  --------------------------------------------------
+  TASK 1 – Devvit project bootstrap
+  --------------------------------------------------
+  TASK 2 – Core domain models
+
+  Create TypeScript interfaces for:
+
+  TrackConfig DailyRace OfficialRaceResult
+  SeasonStanding CarConfig SubmissionPayload
+  --------------------------------------------------
+
+TASK 3 – Daily track generator
+
+Implement:
+
+generateDailyTrack(trackId: string): TrackConfig
+
+trackId is YYYYMMDD. The generator must be deterministic.
+
+Fields: - length - cornerDensity - straightRatio - width - surfaceGrip -
+elevationProfile - weatherProbability
+
+  --------------------------------------------------
+  TASK 4 – Daily race store
+  --------------------------------------------------
+  TASK 5 – Season store
+
+  Implement KV helpers for:
+
+  season:current
+
+  Track: - totalPoints per user - podiumCount per
+  user - racesPlayed per user
+  --------------------------------------------------
+
+TASK 6 – Car configuration model
+
+Implement car configuration schema:
+
+-   downforce
+-   gearBias
+-   tyres
+-   drivingStyle
+-   tacticalAbility
+
+  --------------------------------------------------
+  TASK 7 – Web driving game scaffold
+  --------------------------------------------------
+  TASK 8 – Config driven handling
+
+  Apply car configuration to handling:
+
+  - downforce affects grip and cornering speed -
+  gear bias affects acceleration curve and max
+  speed - tyres affect grip and slide tolerance -
+  driving style affects boost power and stability
+  --------------------------------------------------
+
+TASK 9 – Practice mode
+
+Implement practice mode in the web game:
+
+-   unlimited laps
+-   lap times shown only locally
+-   no server submission
+
+  --------------------------------------------------
+  TASK 10 – Official race mode
+  --------------------------------------------------
+  TASK 11 – Submission API contract
+
+  Implement Devvit endpoint:
+
+  POST /submit-official-run
+
+  Payload: - userId - trackId - lapTime - config -
+  checkpointTimes - replayHash
+  --------------------------------------------------
+
+TASK 12 – Submission validation
+
+On backend:
+
+-   verify trackId equals today
+-   verify race not frozen
+-   verify user has no existing official result
+-   verify lap time bounds
+-   verify checkpoints order
+
+  --------------------------------------------------
+  TASK 13 – Official result storage
+  --------------------------------------------------
+  TASK 14 – Leaderboard utilities
+
+  Implement:
+
+  getDailyLeaderboard(trackId)
+
+  Sorted by: - lapTime ascending - timestamp
+  tie-break
+  --------------------------------------------------
+
+TASK 15 – Player result view
+
+After submission return:
+
+-   player rank
+-   player lap time
+-   top leaderboard slice
+
+  --------------------------------------------------
+  TASK 16 – Devvit UI
+  --------------------------------------------------
+  TASK 17 – One submission enforcement
+
+  Implement guard:
+
+  - only one official run per user per trackId
+  --------------------------------------------------
+
+TASK 18 – End of day finalization
+
+Implement daily job:
+
+-   freeze race
+-   compute final ranking
+-   update season standings
+-   compute podium
+
+  --------------------------------------------------
+  TASK 19 – Points system
+  --------------------------------------------------
+  TASK 20 – Season leaderboard API
+
+  Implement:
+
+  getSeasonLeaderboard()
+
+  Sorted by totalPoints then podiumCount.
+  --------------------------------------------------
+
+TASK 21 – Anti-cheat baseline
+
+Implement: - replay hash validation placeholder - suspicious lap time
+flagging - duplicated checkpoint detection
+
+  --------------------------------------------------
+  TASK 22 – Track rotation
+  --------------------------------------------------
+  TASK 23 – Minimal tests
+
+  Add unit tests for:
+
+  - track generator determinism - one-submission
+  rule - leaderboard sorting - points calculation
+  --------------------------------------------------
+
+FINAL GOAL
+
+Players can: - configure their car - drive the track themselves -
+practice freely - submit exactly one official lap per day - see live
+daily leaderboard - compete across a full season
