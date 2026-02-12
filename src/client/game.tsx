@@ -7,6 +7,7 @@ import { CarConfigForm } from './components/CarConfigForm';
 import { Leaderboard } from './components/Leaderboard';
 import { Podium } from './components/Podium';
 import { DrivingSimulator } from './components/DrivingSimulator';
+import { FinishPanel } from './components/FinishPanel';
 import { useCarConfig } from './hooks/useCarConfig';
 
 const App = () => {
@@ -29,6 +30,13 @@ const App = () => {
   const [mode, setMode] = useState<'practice' | 'official'>('practice');
   const raceFrozen = race?.frozen || false;
   const lapsRequired = race?.lapsRequired || 3;
+  
+  // Finish panel state
+  const [showFinishPanel, setShowFinishPanel] = useState(false);
+  const [finishData, setFinishData] = useState<{
+    totalTime: number;
+    lapTimes: number[];
+  } | null>(null);
 
   const handleRaceComplete = async (
     totalTime: number,
@@ -36,6 +44,10 @@ const App = () => {
     checkpointTimes: number[],
     replayHash: string
   ) => {
+    // Show finish panel immediately
+    setFinishData({ totalTime, lapTimes });
+    setShowFinishPanel(true);
+
     if (mode === 'official' && !hasSubmitted && !raceFrozen) {
       try {
         // Validate total time
@@ -93,6 +105,11 @@ const App = () => {
         showToast(`Error: ${errorMessage}`);
       }
     }
+  };
+
+  const handleCloseFinishPanel = () => {
+    setShowFinishPanel(false);
+    setFinishData(null);
   };
 
   if (loading) {
@@ -166,7 +183,7 @@ const App = () => {
 
         {/* Podium */}
         {podium.p1 && (
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="f1-card p-6">
             <Podium podium={podium} />
           </div>
         )}
@@ -279,6 +296,16 @@ const App = () => {
           </div>
         </div>
       </div>
+
+      {/* Finish Panel */}
+      {showFinishPanel && finishData && (
+        <FinishPanel
+          playerName={username || 'Driver'}
+          totalTime={finishData.totalTime}
+          lapTimes={finishData.lapTimes}
+          onClose={handleCloseFinishPanel}
+        />
+      )}
     </div>
   );
 };

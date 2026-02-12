@@ -38,6 +38,7 @@ export type OfficialRaceResult = {
   checkpointTimes: number[]; // Times at each checkpoint
   replayHash: string; // Hash of replay data for anti-cheat
   timestamp: number; // Submission timestamp
+  avatarUrl?: string; // Reddit avatar URL
 };
 
 export type SeasonStanding = {

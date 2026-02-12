@@ -18,6 +18,7 @@ import { getPodiumFromResults } from '../utils/finalization';
 import { calculatePoints } from '../utils/points';
 import type { SubmissionPayload } from '../../shared/types';
 import { generateDailyTrack } from '../utils/trackGenerator';
+import { getRedditAvatarUrl } from '../../shared/utils/avatar';
 
 type ErrorResponse = {
   status: 'error';
@@ -135,6 +136,7 @@ api.get('/leaderboard/daily', async (c) => {
   const results = withPositions.map((r) => ({
     ...r,
     points: calculatePoints(r.position),
+    avatarUrl: r.avatarUrl || getRedditAvatarUrl(r.userId),
   }));
   return c.json<GetDailyLeaderboardResponse>({ results });
 });
@@ -156,6 +158,11 @@ api.get('/leaderboard/season', async (c) => {
 api.get('/race/podium', async (c) => {
   const trackId = c.req.query('trackId') || getDateString();
   const allResults = await getAllOfficialResults(trackId);
-  const podium = getPodiumFromResults(allResults);
+  // Ensure all results have avatar URLs
+  const resultsWithAvatars = allResults.map((r) => ({
+    ...r,
+    avatarUrl: r.avatarUrl || getRedditAvatarUrl(r.userId),
+  }));
+  const podium = getPodiumFromResults(resultsWithAvatars);
   return c.json<GetPodiumResponse>({ podium });
 });

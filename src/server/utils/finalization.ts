@@ -7,6 +7,7 @@ import {
 import { updateUserStanding } from '../storage/seasonStorage';
 import { sortRaceResults, assignPositions } from './leaderboard';
 import { calculatePoints } from './points';
+import { getRedditAvatarUrl } from '../../shared/utils/avatar';
 
 /**
  * Finalizes a race day:
@@ -36,10 +37,11 @@ export async function finalizeRaceDay(trackId: string): Promise<PodiumResult> {
   results = sortRaceResults(results);
   results = assignPositions(results);
 
-  // Calculate points for each result
+  // Calculate points for each result and ensure avatar URLs
   results = results.map((result) => ({
     ...result,
     points: calculatePoints(result.position),
+    avatarUrl: result.avatarUrl || getRedditAvatarUrl(result.userId),
   }));
 
   // Update race results

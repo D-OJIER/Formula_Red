@@ -9,6 +9,7 @@ import { validateSubmissionPayload, validateSubmissionAccess } from '../utils/va
 import { performAntiCheatCheck } from '../utils/antiCheat';
 import { getDailyLeaderboard, assignPositions } from '../utils/leaderboard';
 import { calculatePoints } from '../utils/points';
+import { getRedditAvatarUrl } from '../../shared/utils/avatar';
 
 /**
  * Handles official race submission
@@ -81,6 +82,7 @@ export async function handleOfficialSubmission(
     checkpointTimes: payload.checkpointTimes,
     replayHash: payload.replayHash,
     timestamp: Date.now(),
+    avatarUrl: getRedditAvatarUrl(payload.userId),
   };
 
   // Store result

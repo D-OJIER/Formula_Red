@@ -182,8 +182,28 @@ export const DrivingSimulator = ({
         }
 
         // Update position based on speed and angle
-        const newX = prev.x + Math.cos(newAngle) * (newSpeed * 0.1);
-        const newY = prev.y + Math.sin(newAngle) * (newSpeed * 0.1);
+        let newX = prev.x + Math.cos(newAngle) * (newSpeed * 0.1);
+        let newY = prev.y + Math.sin(newAngle) * (newSpeed * 0.1);
+
+        // Boundary checks - keep car within canvas (accounting for car size ~15px radius)
+        const carRadius = 15;
+        const canvasWidth = 800; // Canvas width from canvas element
+        const canvasHeight = 600; // Canvas height from canvas element
+        
+        // Clamp X position
+        const clampedX = Math.max(carRadius, Math.min(canvasWidth - carRadius, newX));
+        
+        // Clamp Y position
+        const clampedY = Math.max(carRadius, Math.min(canvasHeight - carRadius, newY));
+        
+        // If car hits boundary, slow down significantly
+        if (clampedX !== newX || clampedY !== newY) {
+          newSpeed *= 0.3; // Slow down significantly when hitting boundary
+        }
+        
+        // Use clamped positions
+        newX = clampedX;
+        newY = clampedY;
 
         // Check checkpoints
         setCheckpoints((prevCheckpoints) => {
