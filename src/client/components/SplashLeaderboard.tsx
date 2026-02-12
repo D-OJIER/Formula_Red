@@ -22,7 +22,7 @@ export const SplashLeaderboard = ({
     <div className="w-full max-w-2xl space-y-4">
       {showDaily && (
         <div className="f1-card bg-white/95 backdrop-blur-sm p-4">
-          <div className="f1-card-header rounded-t-lg -m-4 mb-4">
+          <div className="f1-card-header mb-4">
             <h3 className="text-lg font-bold flex items-center gap-2">
               🏁 Daily Leaderboard
             </h3>
@@ -69,7 +69,7 @@ export const SplashLeaderboard = ({
 
       {showSeason && seasonStandings.length > 0 && (
         <div className="f1-card bg-white/95 backdrop-blur-sm p-4">
-          <div className="f1-card-header rounded-t-lg -m-4 mb-4">
+          <div className="f1-card-header mb-4">
             <h3 className="text-lg font-bold flex items-center gap-2">
               🏆 Season Leaderboard
             </h3>

@@ -128,6 +128,9 @@
   background: linear-gradient(135deg, var(--f1-white), var(--f1-light-gray));
   border: 2px solid var(--f1-red);
   box-shadow: 0 4px 12px rgba(225, 6, 0, 0.15);
+  border-radius: 8px;
+  overflow: hidden; /* Clip content to rounded corners */
+  position: relative; /* For proper header positioning */
 }
 
 .f1-card-header {
@@ -137,6 +140,11 @@
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 1px;
+  margin-left: -1.5rem;
+  margin-right: -1.5rem;
+  margin-top: -1.5rem;
+  margin-bottom: 1rem;
+  border-radius: 6px 6px 0 0; /* Match card's top corners, accounting for 2px border */
 }
 
 /* Checkered Pattern Background */
@@ -206,4 +214,84 @@
   font-size: 1.5rem;
   font-weight: bold;
   color: var(--f1-black);
+}
+
+/* Racing Title Styles */
+.racing-title {
+  font-family: 'Arial Black', 'Arial Bold', 'Helvetica Neue', Helvetica, sans-serif;
+  font-weight: 900;
+  font-size: 4.5rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #e10600 0%, #ff3333 25%, #e10600 50%, #b83000 75%, #e10600 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 
+    0 0 20px rgba(225, 6, 0, 0.5),
+    0 0 40px rgba(225, 6, 0, 0.3),
+    0 4px 8px rgba(0, 0, 0, 0.4);
+  position: relative;
+  animation: racingGlow 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(225, 6, 0, 0.6));
+}
+
+.racing-title::before {
+  content: 'FORMULA RED';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #000000 0%, #333333 50%, #000000 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  z-index: -1;
+  transform: translate(2px, 2px);
+  opacity: 0.3;
+}
+
+.racing-title::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: racingShine 3s ease-in-out infinite;
+}
+
+@keyframes racingGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 10px rgba(225, 6, 0, 0.6)) brightness(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(225, 6, 0, 0.8)) brightness(1.1);
+  }
+}
+
+@keyframes racingShine {
+  0% {
+    left: -100%;
+  }
+  50% {
+    left: 100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Racing subtitle */
+.racing-subtitle {
+  font-family: 'Arial', 'Helvetica Neue', Helvetica, sans-serif;
+  font-weight: 300;
+  font-size: 1rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: -0.5rem;
 }

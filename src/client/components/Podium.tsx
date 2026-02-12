@@ -12,7 +12,7 @@ export const Podium = ({ podium }: PodiumProps) => {
 
   return (
     <div className="space-y-4">
-      <div className="f1-card-header rounded-t-lg -m-6 mb-4">
+      <div className="f1-card-header mb-4">
         <h3 className="text-xl font-bold text-center">🏆 Podium 🏆</h3>
       </div>
       <div className="flex items-end justify-center gap-4">

@@ -10,7 +10,7 @@ export const Leaderboard = ({ results, type }: LeaderboardProps) => {
     const dailyResults = results as OfficialRaceResult[];
     return (
       <div className="space-y-2">
-        <div className="f1-card-header rounded-t-lg -m-6 mb-4">
+        <div className="f1-card-header mb-4">
           <h3 className="text-lg font-bold">Daily Leaderboard</h3>
         </div>
         {dailyResults.length === 0 ? (
@@ -53,7 +53,7 @@ export const Leaderboard = ({ results, type }: LeaderboardProps) => {
   const seasonStandings = results as SeasonStanding[];
   return (
     <div className="space-y-2">
-      <div className="f1-card-header rounded-t-lg -m-6 mb-4">
+      <div className="f1-card-header mb-4">
         <h3 className="text-lg font-bold">Season Leaderboard</h3>
       </div>
       {seasonStandings.length === 0 ? (

@@ -151,7 +151,7 @@ const App = () => {
         {/* Track Info */}
         {trackConfig && (
           <div className="f1-card p-6">
-            <div className="f1-card-header rounded-t-lg -m-6 mb-4">
+            <div className="f1-card-header mb-4">
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <span>🏁</span> Track Information
               </h2>
@@ -207,7 +207,7 @@ const App = () => {
 
         {/* Mode Selection */}
         <div className="f1-card p-6">
-          <div className="f1-card-header rounded-t-lg -m-6 mb-4">
+          <div className="f1-card-header mb-4">
             <h2 className="text-xl font-bold">Select Mode</h2>
           </div>
           <div className="flex gap-4">

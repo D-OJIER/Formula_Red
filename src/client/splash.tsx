@@ -12,12 +12,18 @@ export const Splash = () => {
 
   return (
     <div className="flex relative flex-col justify-center items-center min-h-screen gap-4 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4">
-      <div className="flex flex-col items-center gap-4 max-w-4xl w-full">
-        <h1 className="text-5xl font-bold text-center bg-gradient-to-r from-[#e10600] to-[#b83000] bg-clip-text text-transparent flex items-center justify-center gap-3">
-          <span className="text-6xl">🏎️</span>
-          <span>FORMULA RED</span>
-        </h1>
-        <p className="text-base text-center text-gray-300 max-w-md font-medium">
+      <div className="flex flex-col items-center gap-6 max-w-4xl w-full">
+        <div className="flex flex-col items-center gap-2">
+          <div className="relative flex items-center justify-center gap-4">
+            <span className="text-7xl animate-pulse" style={{ filter: 'drop-shadow(0 0 10px rgba(225, 6, 0, 0.6))' }}>🏎️</span>
+            <h1 className="racing-title relative">
+              FORMULA RED
+            </h1>
+            <span className="text-7xl animate-pulse" style={{ filter: 'drop-shadow(0 0 10px rgba(225, 6, 0, 0.6))', animationDelay: '0.5s' }}>🏎️</span>
+          </div>
+          <p className="racing-subtitle">DRIVER EDITION</p>
+        </div>
+        <p className="text-base text-center text-gray-300 max-w-md font-medium leading-relaxed">
           Drive your Formula Red car! Practice unlimited laps, then submit your
           official race time. Compete daily and climb the season leaderboard.
         </p>

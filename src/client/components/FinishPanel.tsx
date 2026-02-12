@@ -28,7 +28,7 @@ export const FinishPanel = ({ playerName, totalTime, lapTimes, onClose }: Finish
         }`}
       >
         {/* Header */}
-        <div className="f1-card-header rounded-t-lg -m-8 mb-6 pb-4">
+        <div className="f1-card-header mb-6 pb-4" style={{ marginTop: '-2rem', marginLeft: '-2rem', marginRight: '-2rem' }}>
           <div className="flex items-center justify-center gap-3">
             <span className="text-4xl">🏁</span>
             <h2 className="text-2xl font-bold text-center">RACE FINISHED</h2>

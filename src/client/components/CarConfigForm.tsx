@@ -24,7 +24,7 @@ export const CarConfigForm = ({
 
   return (
     <div className="space-y-6 f1-card p-6">
-      <div className="f1-card-header rounded-t-lg -m-6 mb-4">
+      <div className="f1-card-header mb-4">
         <h3 className="text-lg font-bold flex items-center gap-2">
           🏎️ Car Configuration
         </h3>
