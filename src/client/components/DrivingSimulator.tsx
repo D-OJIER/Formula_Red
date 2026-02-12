@@ -435,7 +435,7 @@ export const DrivingSimulator = ({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [carState, isDriving, lapTime, checkpoints, currentLap, bestLapTime, mode, getPerformanceModifier, trackConfig, generateReplayHash, onLapComplete]);
+  }, [carState, isDriving, lapTime, checkpoints, currentLap, bestLapTime, lapTimes, totalRaceTime, mode, lapsRequired, getPerformanceModifier, trackConfig, generateReplayHash, onRaceComplete]);
 
   // Update lap time
   useEffect(() => {
