@@ -9,6 +9,7 @@ import { Podium } from './components/Podium';
 import { DrivingSimulator } from './components/DrivingSimulator';
 import { FinishPanel } from './components/FinishPanel';
 import { useCarConfig } from './hooks/useCarConfig';
+import formulaRedLogo from './assets/formula-red-logo.png';
 
 const App = () => {
   const {
@@ -129,7 +130,12 @@ const App = () => {
             <div className="f1-checkered-bg w-full h-full"></div>
           </div>
           <h1 className="text-4xl font-bold text-[#e10600] mb-2 relative z-10 flex items-center gap-3">
-            <span className="text-5xl">🏎️</span>
+            <img 
+              src={formulaRedLogo} 
+              alt="Formula Red Logo" 
+              className="w-12 h-12 object-contain"
+              style={{ filter: 'drop-shadow(0 0 8px rgba(225, 6, 0, 0.5))' }}
+            />
             <span className="bg-gradient-to-r from-[#e10600] to-[#b83000] bg-clip-text text-transparent">
               FORMULA RED
             </span>
@@ -219,7 +225,8 @@ const App = () => {
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300 border-2 border-gray-300'
               }`}
             >
-              🏎️ Practice Mode
+              <img src={formulaRedLogo} alt="Logo" className="w-5 h-5 object-contain inline-block mr-2" />
+              Practice Mode
             </button>
             <button
               onClick={() => setMode('official')}
@@ -263,7 +270,17 @@ const App = () => {
             {trackConfig && (
               <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg shadow-xl p-6 border-2 border-gray-700">
                 <h2 className="text-2xl font-bold mb-4 text-white flex items-center gap-2">
-                  {mode === 'practice' ? '🏎️ Practice Driving' : '🏁 Official Race'}
+                  {mode === 'practice' ? (
+                    <>
+                      <img src={formulaRedLogo} alt="Logo" className="w-6 h-6 object-contain" />
+                      <span>Practice Driving</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🏁</span>
+                      <span>Official Race</span>
+                    </>
+                  )}
                   {mode === 'official' && (
                     <span className="text-sm bg-red-600 text-white px-3 py-1 rounded-full">
                       {lapsRequired} Laps Required

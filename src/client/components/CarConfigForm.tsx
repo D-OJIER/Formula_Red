@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import type { CarConfig } from '../../shared/types';
+import formulaRedLogo from '../assets/formula-red-logo.png';
 
 type CarConfigFormProps = {
   config: CarConfig;
@@ -26,7 +27,8 @@ export const CarConfigForm = ({
     <div className="space-y-6 f1-card p-6">
       <div className="f1-card-header mb-4">
         <h3 className="text-lg font-bold flex items-center gap-2">
-          🏎️ Car Configuration
+          <img src={formulaRedLogo} alt="Logo" className="w-5 h-5 object-contain inline-block mr-2" />
+          Car Configuration
         </h3>
       </div>
       

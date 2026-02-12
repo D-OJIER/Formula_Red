@@ -6,6 +6,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useSplashData } from './hooks/useSplashData';
 import { SplashLeaderboard } from './components/SplashLeaderboard';
+import formulaRedLogo from './assets/formula-red-logo.png';
 
 export const Splash = () => {
   const { dailyResults, seasonStandings, loading } = useSplashData();
@@ -15,11 +16,21 @@ export const Splash = () => {
       <div className="flex flex-col items-center gap-6 max-w-4xl w-full">
         <div className="flex flex-col items-center gap-2">
           <div className="relative flex items-center justify-center gap-4">
-            <span className="text-7xl animate-pulse" style={{ filter: 'drop-shadow(0 0 10px rgba(225, 6, 0, 0.6))' }}>🏎️</span>
+            <img 
+              src={formulaRedLogo} 
+              alt="Formula Red Logo" 
+              className="w-16 h-16 object-contain animate-pulse"
+              style={{ filter: 'drop-shadow(0 0 10px rgba(225, 6, 0, 0.6))' }}
+            />
             <h1 className="racing-title relative">
               FORMULA RED
             </h1>
-            <span className="text-7xl animate-pulse" style={{ filter: 'drop-shadow(0 0 10px rgba(225, 6, 0, 0.6))', animationDelay: '0.5s' }}>🏎️</span>
+            <img 
+              src={formulaRedLogo} 
+              alt="Formula Red Logo" 
+              className="w-16 h-16 object-contain animate-pulse"
+              style={{ filter: 'drop-shadow(0 0 10px rgba(225, 6, 0, 0.6))', animationDelay: '0.5s' }}
+            />
           </div>
           <p className="racing-subtitle">DRIVER EDITION</p>
         </div>
