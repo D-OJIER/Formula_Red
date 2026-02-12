@@ -240,6 +240,8 @@ export const DrivingSimulator = ({
 
         // Check for lap completion (all checkpoints passed)
         const allCheckpointsPassed = checkpoints.every((cp) => cp.passed);
+        let raceComplete = false;
+        
         if (allCheckpointsPassed && lapStartTimeRef.current && prev.speed > 10) {
           const currentTime = Date.now();
           const completedLapTime = (currentTime - lapStartTimeRef.current) / 1000;
@@ -259,7 +261,7 @@ export const DrivingSimulator = ({
             
             // Check if race is complete (all required laps done)
             const newLapNumber = currentLap + 1;
-            const raceComplete = mode === 'official' && newLapNumber >= lapsRequired;
+            raceComplete = mode === 'official' && newLapNumber >= lapsRequired;
             
             if (raceComplete && raceStartTimeRef.current) {
               // Race is complete - calculate total time
@@ -292,17 +294,17 @@ export const DrivingSimulator = ({
                 setIsDriving(false);
               }, 100);
             }
+            
+            // Reset for next lap (or continue if race not complete)
+            if (!raceComplete) {
+              lapStartTimeRef.current = currentTime;
+              checkpointTimesRef.current = [];
+              replayDataRef.current = [];
+              setCheckpoints((prev) => prev.map((cp) => ({ ...cp, passed: false, time: null })));
+              setCurrentLap(newLapNumber);
+            }
           } else {
             console.warn('Invalid lap time detected:', completedLapTime);
-          }
-          
-          // Reset for next lap (or continue if race not complete)
-          if (!raceComplete) {
-            lapStartTimeRef.current = currentTime;
-            checkpointTimesRef.current = [];
-            replayDataRef.current = [];
-            setCheckpoints((prev) => prev.map((cp) => ({ ...cp, passed: false, time: null })));
-            setCurrentLap(newLapNumber);
           }
         }
 
