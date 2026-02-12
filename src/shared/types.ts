@@ -15,8 +15,6 @@ export type CarConfig = {
   downforce: number; // 0-100
   gearBias: number; // 0-100 (affects acceleration curve and max speed)
   tyres: 'soft' | 'medium' | 'hard';
-  drivingStyle: number; // 0-100 (affects boost power and stability)
-  tacticalAbility: number; // 0-100
 };
 
 export type DailyRace = {

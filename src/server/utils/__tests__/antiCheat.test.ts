@@ -43,11 +43,9 @@ describe('Anti-Cheat', () => {
       trackId: '20240101',
       lapTime: 120,
       config: {
-        downforce: 50,
-        gearBias: 50,
+        downforce: 20,
+        gearBias: 20,
         tyres: 'medium',
-        drivingStyle: 50,
-        tacticalAbility: 50,
       },
       checkpointTimes: [30, 60, 90],
       replayHash: 'a'.repeat(32),

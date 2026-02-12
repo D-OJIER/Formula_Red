@@ -118,9 +118,8 @@ export const DrivingSimulator = ({
 
   // Calculate performance modifiers from car config
   const getPerformanceModifier = useCallback(() => {
-    const downforceMod = (carConfig.downforce - 50) * 0.02; // -1 to +1
-    const gearBiasMod = (carConfig.gearBias - 50) * 0.015;
-    const drivingStyleMod = (carConfig.drivingStyle - 50) * 0.01;
+    const downforceMod = (carConfig.downforce - 20) * 0.02; // Base is 20, so -20 to +80 range
+    const gearBiasMod = (carConfig.gearBias - 20) * 0.015; // Base is 20, so -20 to +80 range
     
     const tyreMods: Record<string, number> = {
       soft: 0.05, // More grip
@@ -128,7 +127,7 @@ export const DrivingSimulator = ({
       hard: -0.03, // Less grip but more durable
     };
 
-    return 1 + downforceMod + gearBiasMod + drivingStyleMod + (tyreMods[carConfig.tyres] || 0);
+    return 1 + downforceMod + gearBiasMod + (tyreMods[carConfig.tyres] || 0);
   }, [carConfig]);
 
   // Generate replay hash
@@ -178,7 +177,7 @@ export const DrivingSimulator = ({
         const acceleration = 5 * performanceMod;
         const deceleration = 8;
         const reverseAcceleration = 3 * performanceMod; // Slower reverse acceleration
-        const turnSpeed = 0.05 * (1 + (carConfig.downforce - 50) * 0.01);
+        const turnSpeed = 0.05 * (1 + (carConfig.downforce - 20) * 0.01);
 
     const updateCar = () => {
       setCarState((prev) => {
@@ -497,15 +496,21 @@ export const DrivingSimulator = ({
       // Use ref for immediate rendering
       const currentActiveCheckpointIndex = activeCheckpointIndexRef.current;
       checkpoints.forEach((checkpoint, index) => {
-        // Only show if it's the active checkpoint or if it's been passed
-        if (index === currentActiveCheckpointIndex || checkpoint.passed) {
-          ctx.fillStyle = checkpoint.passed ? '#00ff00' : '#ffff00';
+        const isActive = index === currentActiveCheckpointIndex;
+        const isPassed = checkpoint.passed;
+        
+        // Show active checkpoint OR passed checkpoints
+        if (isActive || isPassed) {
+          // Priority: If it's the active checkpoint, always show yellow (even if state is stale)
+          // This ensures immediate visibility after lap reset
+          const shouldShowAsActive = isActive;
+          ctx.fillStyle = shouldShowAsActive ? '#ffff00' : '#00ff00';
           ctx.beginPath();
           ctx.arc(checkpoint.x, checkpoint.y, 15, 0, Math.PI * 2);
           ctx.fill();
           
           // Draw a pulsing effect for active checkpoint
-          if (!checkpoint.passed && index === currentActiveCheckpointIndex) {
+          if (shouldShowAsActive) {
             ctx.strokeStyle = '#ffff00';
             ctx.lineWidth = 2;
             ctx.beginPath();

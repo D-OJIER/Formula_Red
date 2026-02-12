@@ -97,52 +97,6 @@ export const CarConfigForm = ({
             <option value="hard">🔵 Hard (Less grip, more durable)</option>
           </select>
         </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-bold text-gray-800 uppercase tracking-wide">
-              Driving Style
-            </label>
-            <span className="f1-badge">{config.drivingStyle}</span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={config.drivingStyle}
-            onChange={(e) =>
-              onConfigChange({ ...config, drivingStyle: parseInt(e.target.value) })
-            }
-            disabled={disabled}
-            className="f1-slider"
-          />
-          <p className="text-xs text-gray-600 mt-2 italic">
-            Affects boost power and stability
-          </p>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-bold text-gray-800 uppercase tracking-wide">
-              Tactical Ability
-            </label>
-            <span className="f1-badge">{config.tacticalAbility}</span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={config.tacticalAbility}
-            onChange={(e) =>
-              onConfigChange({ ...config, tacticalAbility: parseInt(e.target.value) })
-            }
-            disabled={disabled}
-            className="f1-slider"
-          />
-          <p className="text-xs text-gray-600 mt-2 italic">
-            Strategic decision making and race craft
-          </p>
-        </div>
       </div>
     </div>
   );

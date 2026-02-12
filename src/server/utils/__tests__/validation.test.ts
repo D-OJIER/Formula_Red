@@ -9,11 +9,9 @@ describe('Submission Validation', () => {
     trackId: new Date().toISOString().slice(0, 10).replace(/-/g, ''),
     lapTime: 120.5,
     config: {
-      downforce: 50,
-      gearBias: 50,
+      downforce: 20,
+      gearBias: 20,
       tyres: 'medium',
-      drivingStyle: 50,
-      tacticalAbility: 50,
     },
     checkpointTimes: [30, 60, 90, 120],
     replayHash: 'a'.repeat(32),
@@ -64,11 +62,9 @@ describe('Submission Validation', () => {
 
   it('should validate car config', () => {
     const config: CarConfig = {
-      downforce: 50,
-      gearBias: 50,
+      downforce: 20,
+      gearBias: 20,
       tyres: 'medium',
-      drivingStyle: 50,
-      tacticalAbility: 50,
     };
     const result = validateCarConfig(config);
     expect(result.valid).toBe(true);
@@ -77,10 +73,8 @@ describe('Submission Validation', () => {
   it('should reject invalid car config values', () => {
     const config: CarConfig = {
       downforce: 150, // Out of range
-      gearBias: 50,
+      gearBias: 20,
       tyres: 'medium',
-      drivingStyle: 50,
-      tacticalAbility: 50,
     };
     const result = validateCarConfig(config);
     expect(result.valid).toBe(false);

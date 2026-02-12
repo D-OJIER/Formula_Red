@@ -4,11 +4,9 @@ import type { CarConfig } from '../../shared/types';
 const CAR_CONFIG_STORAGE_KEY = 'formula-red-car-config';
 
 const defaultConfig: CarConfig = {
-  downforce: 50,
-  gearBias: 50,
+  downforce: 20,
+  gearBias: 20,
   tyres: 'medium',
-  drivingStyle: 50,
-  tacticalAbility: 50,
 };
 
 /**
@@ -25,11 +23,11 @@ export const useCarConfig = () => {
         if (
           typeof parsed.downforce === 'number' &&
           typeof parsed.gearBias === 'number' &&
-          typeof parsed.drivingStyle === 'number' &&
-          typeof parsed.tacticalAbility === 'number' &&
           ['soft', 'medium', 'hard'].includes(parsed.tyres)
         ) {
-          return parsed as CarConfig;
+          // Remove old fields if they exist (for backward compatibility)
+          const { drivingStyle, tacticalAbility, ...cleanConfig } = parsed;
+          return cleanConfig as CarConfig;
         }
       }
     } catch (err) {

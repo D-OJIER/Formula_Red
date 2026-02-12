@@ -28,20 +28,6 @@ export function validateCarConfig(config: CarConfig): { valid: boolean; error?: 
     };
   }
 
-  if (typeof config.drivingStyle !== 'number' || config.drivingStyle < 0 || config.drivingStyle > 100) {
-    return {
-      valid: false,
-      error: 'drivingStyle must be a number between 0 and 100',
-    };
-  }
-
-  if (typeof config.tacticalAbility !== 'number' || config.tacticalAbility < 0 || config.tacticalAbility > 100) {
-    return {
-      valid: false,
-      error: 'tacticalAbility must be a number between 0 and 100',
-    };
-  }
-
   return { valid: true };
 }
 
