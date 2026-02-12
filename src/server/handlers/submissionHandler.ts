@@ -39,11 +39,14 @@ export async function handleOfficialSubmission(
   if (!race) {
     // Create new race with track config
     const trackConfig = generateDailyTrack(payload.trackId);
+    const { generateLapsRequired } = await import('../utils/trackGenerator');
+    const lapsRequired = generateLapsRequired(payload.trackId);
     race = {
       trackId: payload.trackId,
       trackConfig,
       frozen: false,
       results: [],
+      lapsRequired,
     };
     const { storeDailyRace } = await import('../storage/dailyRaceStorage');
     await storeDailyRace(race);

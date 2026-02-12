@@ -46,12 +46,16 @@ api.get('/init', async (c) => {
     // Get or create race
     let race = await getDailyRace(trackId);
     let trackConfig = null;
+    let lapsRequired = 3;
     
     if (race) {
       trackConfig = race.trackConfig;
+      lapsRequired = race.lapsRequired;
     } else {
       // Generate track config for today
       trackConfig = generateDailyTrack(trackId);
+      const { generateLapsRequired } = await import('../utils/trackGenerator');
+      lapsRequired = generateLapsRequired(trackId);
     }
 
     return c.json<InitResponse>({
@@ -60,6 +64,7 @@ api.get('/init', async (c) => {
       username: username ?? 'anonymous',
       trackId,
       trackConfig,
+      lapsRequired,
     });
   } catch (error) {
     console.error(`API Init Error for post ${postId}:`, error);

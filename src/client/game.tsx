@@ -34,15 +34,20 @@ const App = () => {
 
   const [mode, setMode] = useState<'practice' | 'official'>('practice');
   const raceFrozen = race?.frozen || false;
+  const lapsRequired = race?.lapsRequired || 3;
 
-  const handleLapComplete = async (
-    lapTime: number,
+  const handleRaceComplete = async (
+    totalTime: number,
+    lapTimes: number[],
     checkpointTimes: number[],
     replayHash: string
   ) => {
     if (mode === 'official' && !hasSubmitted && !raceFrozen) {
       try {
-        await submitOfficialRun(lapTime, checkpointTimes, replayHash, carConfig);
+        // Use the best lap time for submission (fastest single lap)
+        const bestLapTime = Math.min(...lapTimes);
+        await submitOfficialRun(bestLapTime, checkpointTimes, replayHash, carConfig);
+        alert(`Race Complete! Your time: ${totalTime.toFixed(2)}s (Best Lap: ${bestLapTime.toFixed(2)}s)`);
       } catch (error) {
         console.error('Failed to submit official run:', error);
         alert(error instanceof Error ? error.message : 'Submission failed');
@@ -81,24 +86,30 @@ const App = () => {
 
         {/* Track Info */}
         {trackConfig && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Track Information</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <div className="text-sm text-gray-600">Length</div>
-                <div className="text-lg font-semibold">{trackConfig.length}m</div>
+          <div className="bg-gradient-to-br from-gray-50 to-white rounded-lg shadow-lg p-6 border-2 border-gray-200">
+            <h2 className="text-2xl font-bold mb-4 text-gray-800 flex items-center gap-2">
+              <span>🏁</span> Track Information
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div className="text-xs text-blue-600 font-semibold uppercase mb-1">Length</div>
+                <div className="text-xl font-bold text-blue-900">{trackConfig.length}m</div>
               </div>
-              <div>
-                <div className="text-sm text-gray-600">Corner Density</div>
-                <div className="text-lg font-semibold">{trackConfig.cornerDensity}%</div>
+              <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <div className="text-xs text-purple-600 font-semibold uppercase mb-1">Corner Density</div>
+                <div className="text-xl font-bold text-purple-900">{trackConfig.cornerDensity}%</div>
               </div>
-              <div>
-                <div className="text-sm text-gray-600">Surface Grip</div>
-                <div className="text-lg font-semibold">{trackConfig.surfaceGrip}%</div>
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                <div className="text-xs text-green-600 font-semibold uppercase mb-1">Surface Grip</div>
+                <div className="text-xl font-bold text-green-900">{trackConfig.surfaceGrip}%</div>
               </div>
-              <div>
-                <div className="text-sm text-gray-600">Width</div>
-                <div className="text-lg font-semibold">{trackConfig.width}m</div>
+              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                <div className="text-xs text-orange-600 font-semibold uppercase mb-1">Width</div>
+                <div className="text-xl font-bold text-orange-900">{trackConfig.width}m</div>
+              </div>
+              <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                <div className="text-xs text-red-600 font-semibold uppercase mb-1">Laps Required</div>
+                <div className="text-xl font-bold text-red-900">{lapsRequired}</div>
               </div>
             </div>
           </div>
@@ -129,41 +140,45 @@ const App = () => {
         )}
 
         {/* Mode Selection */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Select Mode</h2>
+        <div className="bg-gradient-to-r from-gray-50 to-white rounded-lg shadow-lg p-6 border-2 border-gray-200">
+          <h2 className="text-xl font-bold mb-4 text-gray-800">Select Mode</h2>
           <div className="flex gap-4">
             <button
               onClick={() => setMode('practice')}
-              className={`px-6 py-3 rounded font-semibold ${
+              className={`px-8 py-4 rounded-lg font-bold text-lg transition-all transform hover:scale-105 ${
                 mode === 'practice'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
-              Practice Mode
+              🏎️ Practice Mode
             </button>
             <button
               onClick={() => setMode('official')}
               disabled={hasSubmitted || raceFrozen}
-              className={`px-6 py-3 rounded font-semibold ${
+              className={`px-8 py-4 rounded-lg font-bold text-lg transition-all transform hover:scale-105 ${
                 mode === 'official'
-                  ? 'bg-[#d93900] text-white'
+                  ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              } disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
             >
-              Official Race
-              {hasSubmitted && ' (Submitted)'}
+              🏁 Official Race ({lapsRequired} Laps)
+              {hasSubmitted && ' ✓'}
             </button>
           </div>
           {hasSubmitted && (
-            <p className="text-sm text-gray-600 mt-2">
-              You have already submitted your official run for today.
-            </p>
+            <div className="mt-4 p-3 bg-green-100 border border-green-300 rounded-lg">
+              <p className="text-sm text-green-800 font-semibold">
+                ✓ You have already submitted your official run for today.
+              </p>
+            </div>
           )}
           {raceFrozen && (
-            <p className="text-sm text-gray-600 mt-2">
-              Race is frozen. Official submissions are closed.
-            </p>
+            <div className="mt-4 p-3 bg-red-100 border border-red-300 rounded-lg">
+              <p className="text-sm text-red-800 font-semibold">
+                ⚠ Race is frozen. Official submissions are closed.
+              </p>
+            </div>
           )}
         </div>
 
@@ -179,15 +194,21 @@ const App = () => {
             </div>
 
             {trackConfig && (
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-xl font-semibold mb-4">
+              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-lg shadow-xl p-6 border-2 border-gray-700">
+                <h2 className="text-2xl font-bold mb-4 text-white flex items-center gap-2">
                   {mode === 'practice' ? '🏎️ Practice Driving' : '🏁 Official Race'}
+                  {mode === 'official' && (
+                    <span className="text-sm bg-red-600 text-white px-3 py-1 rounded-full">
+                      {lapsRequired} Laps Required
+                    </span>
+                  )}
                 </h2>
                 <DrivingSimulator
                   carConfig={carConfig}
                   trackConfig={trackConfig}
                   mode={mode}
-                  onLapComplete={handleLapComplete}
+                  lapsRequired={lapsRequired}
+                  onRaceComplete={handleRaceComplete}
                   disabled={raceFrozen || (mode === 'official' && hasSubmitted)}
                 />
               </div>

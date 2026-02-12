@@ -37,3 +37,12 @@ export function generateDailyTrack(trackId: string): TrackConfig {
     weatherProbability,
   };
 }
+
+/**
+ * Generate number of laps required for a race (deterministic based on trackId)
+ */
+export function generateLapsRequired(trackId: string): number {
+  const rng = createRNG(`laps:${trackId}`);
+  // Generate between 3-5 laps
+  return rng.nextInt(3, 5);
+}

@@ -24,6 +24,7 @@ export type DailyRace = {
   trackConfig: TrackConfig;
   frozen: boolean; // Whether race is frozen (end of day)
   results: OfficialRaceResult[];
+  lapsRequired: number; // Number of laps required to complete the race
 };
 
 export type OfficialRaceResult = {

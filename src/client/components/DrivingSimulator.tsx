@@ -5,7 +5,8 @@ type DrivingSimulatorProps = {
   carConfig: CarConfig;
   trackConfig: TrackConfig;
   mode: 'practice' | 'official';
-  onLapComplete?: (lapTime: number, checkpointTimes: number[], replayHash: string) => void;
+  lapsRequired?: number;
+  onRaceComplete?: (totalTime: number, lapTimes: number[], checkpointTimes: number[], replayHash: string) => void;
   disabled?: boolean;
 };
 
@@ -31,13 +32,15 @@ export const DrivingSimulator = ({
   carConfig,
   trackConfig,
   mode,
-  onLapComplete,
+  lapsRequired = 3,
+  onRaceComplete,
   disabled = false,
 }: DrivingSimulatorProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
   const keysRef = useRef<Set<string>>(new Set());
   const lapStartTimeRef = useRef<number | null>(null);
+  const raceStartTimeRef = useRef<number | null>(null);
   const checkpointTimesRef = useRef<number[]>([]);
   const replayDataRef = useRef<Array<{ time: number; x: number; y: number; speed: number }>>([]);
 
@@ -56,6 +59,9 @@ export const DrivingSimulator = ({
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [currentLap, setCurrentLap] = useState(0);
   const [bestLapTime, setBestLapTime] = useState<number | null>(null);
+  const [lapTimes, setLapTimes] = useState<number[]>([]);
+  const [raceStartTime, setRaceStartTime] = useState<number | null>(null);
+  const [totalRaceTime, setTotalRaceTime] = useState<number>(0);
 
   // Track layout (circular track for simplicity)
   const trackRadius = 200;
@@ -237,6 +243,9 @@ export const DrivingSimulator = ({
           const currentTime = Date.now();
           const completedLapTime = (currentTime - lapStartTimeRef.current) / 1000;
           
+          // Update lap times
+          setLapTimes((prev) => [...prev, completedLapTime]);
+          
           // Update best lap time in practice mode
           if (mode === 'practice') {
             if (bestLapTime === null || completedLapTime < bestLapTime) {
@@ -244,20 +253,37 @@ export const DrivingSimulator = ({
             }
           }
           
-          // Generate replay hash
-          const replayHash = generateReplayHash(replayDataRef.current);
+          // Check if race is complete (all required laps done)
+          const newLapNumber = currentLap + 1;
+          const raceComplete = mode === 'official' && newLapNumber >= lapsRequired;
           
-          // Call onLapComplete if in official mode
-          if (mode === 'official' && onLapComplete) {
-            onLapComplete(completedLapTime, [...checkpointTimesRef.current], replayHash);
+          if (raceComplete && raceStartTimeRef.current) {
+            // Race is complete - calculate total time
+            const totalTime = (currentTime - raceStartTimeRef.current) / 1000;
+            setTotalRaceTime(totalTime);
+            
+            // Generate replay hash
+            const replayHash = generateReplayHash(replayDataRef.current);
+            
+            // Call onRaceComplete with all lap times (async, don't block)
+            setTimeout(() => {
+              if (onRaceComplete) {
+                const allLapTimes = [...lapTimes, completedLapTime];
+                // Use checkpoint times from final lap
+                onRaceComplete(totalTime, allLapTimes, [...checkpointTimesRef.current], replayHash);
+              }
+              setIsDriving(false);
+            }, 100);
           }
           
-          // Reset for next lap
-          lapStartTimeRef.current = currentTime;
-          checkpointTimesRef.current = [];
-          replayDataRef.current = [];
-          setCheckpoints((prev) => prev.map((cp) => ({ ...cp, passed: false, time: null })));
-          setCurrentLap((prev) => prev + 1);
+          // Reset for next lap (or continue if race not complete)
+          if (!raceComplete) {
+            lapStartTimeRef.current = currentTime;
+            checkpointTimesRef.current = [];
+            replayDataRef.current = [];
+            setCheckpoints((prev) => prev.map((cp) => ({ ...cp, passed: false, time: null })));
+            setCurrentLap(newLapNumber);
+          }
         }
 
         return {
@@ -328,25 +354,72 @@ export const DrivingSimulator = ({
 
       ctx.restore();
 
-      // Draw UI overlay
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(10, 10, 250, mode === 'practice' ? 160 : 140);
+      // Draw UI overlay with gradient background
+      const gradient = ctx.createLinearGradient(10, 10, 10, mode === 'practice' ? 200 : 220);
+      gradient.addColorStop(0, 'rgba(0, 0, 0, 0.85)');
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0.75)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(10, 10, 280, mode === 'practice' ? 200 : 220);
+      
+      // Border
+      ctx.strokeStyle = mode === 'official' ? '#d93900' : '#3b82f6';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(10, 10, 280, mode === 'practice' ? 200 : 220);
 
       ctx.fillStyle = '#fff';
-      ctx.font = '16px monospace';
-      ctx.fillText(`Mode: ${mode === 'practice' ? 'Practice' : 'Official'}`, 20, 35);
+      ctx.font = 'bold 18px monospace';
+      ctx.fillText(`${mode === 'practice' ? '🏎️ PRACTICE' : '🏁 OFFICIAL RACE'}`, 20, 35);
+      
+      ctx.font = '14px monospace';
+      ctx.fillStyle = '#ffd700';
       ctx.fillText(`Speed: ${Math.round(carState.speed)} km/h`, 20, 55);
+      
+      ctx.fillStyle = '#fff';
       ctx.fillText(`Lap Time: ${lapTime.toFixed(2)}s`, 20, 75);
-      ctx.fillText(`Lap: ${currentLap + 1}`, 20, 95);
-      if (mode === 'practice' && bestLapTime !== null) {
-        ctx.fillText(`Best: ${bestLapTime.toFixed(2)}s`, 20, 115);
+      
+      if (mode === 'official') {
+        ctx.fillStyle = '#ff6b6b';
+        ctx.fillText(`Lap: ${currentLap + 1} / ${lapsRequired}`, 20, 95);
+        ctx.fillStyle = '#4ecdc4';
+        if (raceStartTimeRef.current) {
+          const elapsed = (Date.now() - raceStartTimeRef.current) / 1000;
+          ctx.fillText(`Race Time: ${elapsed.toFixed(2)}s`, 20, 115);
+        }
+        if (lapTimes.length > 0) {
+          ctx.fillStyle = '#95e1d3';
+          ctx.fillText(`Lap Times: ${lapTimes.map(t => t.toFixed(2)).join(', ')}`, 20, 135);
+        }
+      } else {
+        ctx.fillStyle = '#fff';
+        ctx.fillText(`Lap: ${currentLap + 1}`, 20, 95);
+        if (bestLapTime !== null) {
+          ctx.fillStyle = '#ffd700';
+          ctx.fillText(`Best: ${bestLapTime.toFixed(2)}s`, 20, 115);
+        }
       }
-      ctx.fillText(`Checkpoints: ${checkpoints.filter((cp) => cp.passed).length}/${checkpoints.length}`, 20, mode === 'practice' ? 135 : 115);
+      
+      ctx.fillStyle = '#a0a0a0';
+      ctx.fillText(`Checkpoints: ${checkpoints.filter((cp) => cp.passed).length}/${checkpoints.length}`, 20, mode === 'practice' ? 135 : 155);
+      
+      ctx.font = '11px monospace';
+      ctx.fillStyle = '#888';
       ctx.fillText(
-        `Controls: ↑/W=Gas ↓/S=Brake ←→/A/D=Steer`,
+        `↑/W=Gas ↓/S=Brake ←→/A/D=Steer`,
         20,
-        mode === 'practice' ? 155 : 135
+        mode === 'practice' ? 155 : 175
       );
+      
+      // Progress bar for official race
+      if (mode === 'official') {
+        const progress = Math.min(currentLap / lapsRequired, 1);
+        ctx.fillStyle = '#333';
+        ctx.fillRect(20, 185, 260, 8);
+        ctx.fillStyle = progress >= 1 ? '#00ff00' : '#d93900';
+        ctx.fillRect(20, 185, 260 * progress, 8);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(20, 185, 260, 8);
+      }
     };
 
     const gameLoop = () => {
@@ -372,18 +445,26 @@ export const DrivingSimulator = ({
       if (lapStartTimeRef.current) {
         setLapTime((Date.now() - lapStartTimeRef.current) / 1000);
       }
+      if (raceStartTimeRef.current && mode === 'official') {
+        setTotalRaceTime((Date.now() - raceStartTimeRef.current) / 1000);
+      }
     }, 16); // ~60fps
 
     return () => clearInterval(interval);
-  }, [isDriving]);
+  }, [isDriving, mode]);
 
   const startDriving = () => {
     setIsDriving(true);
-    lapStartTimeRef.current = Date.now();
+    const now = Date.now();
+    lapStartTimeRef.current = now;
+    raceStartTimeRef.current = now;
     checkpointTimesRef.current = [];
     replayDataRef.current = [];
     setCheckpoints((prev) => prev.map((cp) => ({ ...cp, passed: false, time: null })));
     setLapTime(0);
+    setCurrentLap(0);
+    setLapTimes([]);
+    setTotalRaceTime(0);
   };
 
   const stopDriving = () => {
@@ -398,7 +479,11 @@ export const DrivingSimulator = ({
       steering: 0,
     });
     lapStartTimeRef.current = null;
+    raceStartTimeRef.current = null;
     setLapTime(0);
+    setCurrentLap(0);
+    setLapTimes([]);
+    setTotalRaceTime(0);
     checkpointTimesRef.current = [];
     replayDataRef.current = [];
     setCheckpoints((prev) => prev.map((cp) => ({ ...cp, passed: false, time: null })));
@@ -438,7 +523,7 @@ export const DrivingSimulator = ({
             <div className="text-sm text-gray-600">
               {mode === 'practice' 
                 ? 'Practice mode: Unlimited laps, times shown locally only.'
-                : 'Official race mode: Complete a lap to submit your time!'}
+                : `Official race mode: Complete ${lapsRequired} laps to submit your time! (Lap ${currentLap + 1}/${lapsRequired})`}
             </div>
           </div>
         </div>

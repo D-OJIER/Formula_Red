@@ -27,6 +27,7 @@ interface GameState {
   loading: boolean;
   hasSubmitted: boolean;
   playerResult: PlayerResultView | null;
+  lapsRequired: number;
 }
 
 export const useFormulaRed = () => {
@@ -41,6 +42,7 @@ export const useFormulaRed = () => {
     loading: true,
     hasSubmitted: false,
     playerResult: null,
+    lapsRequired: 3,
   });
 
   const refreshData = useCallback(async () => {
@@ -68,17 +70,18 @@ export const useFormulaRed = () => {
         (r) => r.userId === state.username
       ) || false;
 
-      setState((prev) => ({
-        ...prev,
-        trackId,
-        race: raceData.race,
-        trackConfig: raceData.race?.trackConfig || prev.trackConfig,
-        dailyResults: leaderboardData.results || [],
-        seasonStandings: seasonData.standings || [],
-        podium: podiumData.podium || { p1: null, p2: null, p3: null },
-        hasSubmitted,
-        loading: false,
-      }));
+        setState((prev) => ({
+          ...prev,
+          trackId,
+          race: raceData.race,
+          trackConfig: raceData.race?.trackConfig || prev.trackConfig,
+          dailyResults: leaderboardData.results || [],
+          seasonStandings: seasonData.standings || [],
+          podium: podiumData.podium || { p1: null, p2: null, p3: null },
+          hasSubmitted,
+          lapsRequired: raceData.race?.lapsRequired || 3,
+          loading: false,
+        }));
     } catch (err) {
       console.error('Failed to refresh data', err);
       setState((prev) => ({ ...prev, loading: false }));
@@ -98,6 +101,7 @@ export const useFormulaRed = () => {
           username: data.username,
           trackId: data.trackId,
           trackConfig: data.trackConfig,
+          lapsRequired: data.lapsRequired || 3,
           loading: false,
         }));
         

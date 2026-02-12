@@ -14,6 +14,7 @@ export type InitResponse = {
   username: string;
   trackId: string;
   trackConfig: TrackConfig | null;
+  lapsRequired: number;
 };
 
 export type SubmitOfficialRunResponse = {
