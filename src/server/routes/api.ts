@@ -7,11 +7,15 @@ import type {
   GetDailyLeaderboardResponse,
   GetSeasonLeaderboardResponse,
   GetPodiumResponse,
+  GetMonthlyLeaderboardResponse,
+  GetPlayerProfileResponse,
 } from '../../shared/api';
 import { handleOfficialSubmission } from '../handlers/submissionHandler';
 import { getDailyRace } from '../storage/dailyRaceStorage';
 import { getAllOfficialResults } from '../storage/dailyRaceStorage';
 import { getSeasonStandings } from '../storage/seasonStorage';
+import { getMonthlyStandings, getMonthKey } from '../storage/monthlyStorage';
+import { getPlayerProfile } from '../storage/playerProfileStorage';
 import { getDateString } from '../utils/sessionTime';
 import { getDailyLeaderboard, assignPositions } from '../utils/leaderboard';
 import { getPodiumFromResults } from '../utils/finalization';
@@ -165,4 +169,37 @@ api.get('/race/podium', async (c) => {
   }));
   const podium = getPodiumFromResults(resultsWithAvatars);
   return c.json<GetPodiumResponse>({ podium });
+});
+
+// Get monthly leaderboard
+api.get('/leaderboard/monthly', async (c) => {
+  const monthKey = c.req.query('monthKey'); // Optional: YYYYMM format
+  // Check and reset if new month (only for current month, not when querying past months)
+  if (!monthKey) {
+    const { checkAndResetMonthlyIfNeeded } = await import('../storage/monthlyStorage');
+    await checkAndResetMonthlyIfNeeded();
+  }
+  const standings = await getMonthlyStandings(monthKey);
+  // Sort by totalPoints descending, then wins descending
+  const sorted = standings.sort((a, b) => {
+    if (b.totalPoints !== a.totalPoints) {
+      return b.totalPoints - a.totalPoints;
+    }
+    return b.wins - a.wins;
+  });
+  const currentMonthKey = getMonthKey();
+  return c.json<GetMonthlyLeaderboardResponse>({ 
+    standings: sorted,
+    monthKey: monthKey || currentMonthKey,
+  });
+});
+
+// Get player profile
+api.get('/profile', async (c) => {
+  const userId = context.userId || c.req.query('userId');
+  if (!userId) {
+    return c.json<GetPlayerProfileResponse>({ profile: null }, 400);
+  }
+  const profile = await getPlayerProfile(userId);
+  return c.json<GetPlayerProfileResponse>({ profile });
 });

@@ -72,3 +72,31 @@ export type PodiumResult = {
   p2: OfficialRaceResult | null;
   p3: OfficialRaceResult | null;
 };
+
+export type MonthlyStanding = {
+  userId: string;
+  username: string;
+  totalPoints: number;
+  racesPlayed: number;
+  wins: number;
+  podiumCount: number;
+  avatarUrl?: string;
+};
+
+export type PlayerProfile = {
+  userId: string;
+  username: string;
+  racesParticipated: number;
+  racesWon: number;
+  totalPoints: number;
+  podiumCount: number;
+  bestPosition: number;
+  recentRaces: Array<{
+    trackId: string;
+    position: number;
+    points: number;
+    lapTime: number;
+    timestamp: number;
+  }>;
+  avatarUrl?: string;
+};

@@ -6,6 +6,8 @@ import type {
   TrackConfig,
   PlayerResultView,
   PodiumResult,
+  MonthlyStanding,
+  PlayerProfile,
 } from './types';
 
 export type InitResponse = {
@@ -37,4 +39,22 @@ export type GetSeasonLeaderboardResponse = {
 
 export type GetPodiumResponse = {
   podium: PodiumResult;
+};
+
+export type GetMonthlyLeaderboardResponse = {
+  standings: MonthlyStanding[];
+  monthKey: string;
+};
+
+export type GetPlayerProfileResponse = {
+  profile: PlayerProfile | null;
+};
+
+export type GetMonthlyLeaderboardResponse = {
+  standings: MonthlyStanding[];
+  monthKey: string;
+};
+
+export type GetPlayerProfileResponse = {
+  profile: PlayerProfile | null;
 };

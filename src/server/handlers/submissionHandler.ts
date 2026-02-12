@@ -102,9 +102,23 @@ export async function handleOfficialSubmission(
   // Update stored results with positions and points
   await updateRaceResults(payload.trackId, resultsWithPoints);
 
-  // Find player's rank
+  // Update monthly standings and player profile for the player
   const playerResult = resultsWithPoints.find((r) => r.userId === payload.userId);
-  if (!playerResult) {
+  if (playerResult) {
+    const { updateMonthlyStanding } = await import('../storage/monthlyStorage');
+    const { updatePlayerProfileFromResult } = await import('../storage/playerProfileStorage');
+    await updateMonthlyStanding(
+      playerResult.userId,
+      playerResult.username,
+      playerResult.points,
+      playerResult.position
+    );
+    await updatePlayerProfileFromResult(playerResult);
+  }
+
+  // Find player's rank (re-fetch to ensure we have the right one)
+  const finalPlayerResult = resultsWithPoints.find((r) => r.userId === payload.userId);
+  if (!finalPlayerResult) {
     return {
       success: false,
       error: 'Failed to retrieve player result',

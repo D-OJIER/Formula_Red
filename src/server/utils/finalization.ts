@@ -5,6 +5,8 @@ import {
   updateRaceResults,
 } from '../storage/dailyRaceStorage';
 import { updateUserStanding } from '../storage/seasonStorage';
+import { updateMonthlyStanding } from '../storage/monthlyStorage';
+import { updatePlayerProfileFromResult } from '../storage/playerProfileStorage';
 import { sortRaceResults, assignPositions } from './leaderboard';
 import { calculatePoints } from './points';
 import { getRedditAvatarUrl } from '../../shared/utils/avatar';
@@ -55,6 +57,15 @@ export async function finalizeRaceDay(trackId: string): Promise<PodiumResult> {
       result.points,
       result.position
     );
+    // Update monthly standings
+    await updateMonthlyStanding(
+      result.userId,
+      result.username,
+      result.points,
+      result.position
+    );
+    // Update player profiles
+    await updatePlayerProfileFromResult(result);
   }
 
   return getPodiumFromResults(results);

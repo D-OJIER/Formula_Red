@@ -8,7 +8,13 @@ import { Leaderboard } from './components/Leaderboard';
 import { Podium } from './components/Podium';
 import { DrivingSimulator } from './components/DrivingSimulator';
 import { FinishPanel } from './components/FinishPanel';
+import { Navigation } from './components/Navigation';
+import { PlayerProfileComponent } from './components/PlayerProfile';
 import { useCarConfig } from './hooks/useCarConfig';
+import { useMonthlyLeaderboard } from './hooks/useMonthlyLeaderboard';
+import { usePlayerProfile } from './hooks/usePlayerProfile';
+import { context } from '@devvit/web/client';
+import formulaRedLogo from './assets/formula-red-logo.png';
 
 const App = () => {
   const {
@@ -26,6 +32,12 @@ const App = () => {
   } = useFormulaRed();
 
   const [carConfig, setCarConfig] = useCarConfig();
+  const [activeTab, setActiveTab] = useState<'race' | 'monthly' | 'profile'>('race');
+  
+  // Get user ID for profile
+  const userId = context.userId || username || 'anonymous';
+  const { profile: playerProfile, loading: profileLoading } = usePlayerProfile(userId);
+  const { standings: monthlyStandings, loading: monthlyLoading, currentMonthKey } = useMonthlyLeaderboard();
 
   const [mode, setMode] = useState<'practice' | 'official'>('practice');
   const raceFrozen = race?.frozen || false;
@@ -120,8 +132,38 @@ const App = () => {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4">
+  // Render content based on active tab
+  const renderContent = () => {
+    if (activeTab === 'monthly') {
+      return (
+        <div className="max-w-6xl mx-auto space-y-6">
+          <div className="f1-card p-6">
+            <div className="f1-card-header mb-4">
+              <h2 className="text-2xl font-bold">Monthly Leaderboard</h2>
+              <p className="text-sm text-gray-600 mt-2">
+                Rankings reset at the start of each month. Current month: {currentMonthKey || 'Loading...'}
+              </p>
+            </div>
+            {monthlyLoading ? (
+              <div className="text-center py-8 text-gray-400">Loading monthly leaderboard...</div>
+            ) : (
+              <Leaderboard results={monthlyStandings} type="monthly" />
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (activeTab === 'profile') {
+      return (
+        <div className="max-w-6xl mx-auto space-y-6">
+          <PlayerProfileComponent profile={playerProfile} loading={profileLoading} />
+        </div>
+      );
+    }
+
+    // Race tab (default)
+    return (
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="f1-card p-6 relative overflow-hidden">
@@ -129,7 +171,12 @@ const App = () => {
             <div className="f1-checkered-bg w-full h-full"></div>
           </div>
           <h1 className="text-4xl font-bold text-[#e10600] mb-2 relative z-10 flex items-center gap-3">
-            <span className="text-5xl">🏎️</span>
+            <img 
+              src={formulaRedLogo} 
+              alt="Formula Red Logo" 
+              className="w-12 h-12 object-contain"
+              style={{ filter: 'drop-shadow(0 0 8px rgba(225, 6, 0, 0.5))' }}
+            />
             <span className="bg-gradient-to-r from-[#e10600] to-[#b83000] bg-clip-text text-transparent">
               FORMULA RED
             </span>
@@ -296,7 +343,13 @@ const App = () => {
           </div>
         </div>
       </div>
+    );
+  };
 
+  return (
+    <Navigation activeTab={activeTab} onTabChange={setActiveTab}>
+      {renderContent()}
+      
       {/* Finish Panel */}
       {showFinishPanel && finishData && (
         <FinishPanel
@@ -306,7 +359,7 @@ const App = () => {
           onClose={handleCloseFinishPanel}
         />
       )}
-    </div>
+    </Navigation>
   );
 };
 
