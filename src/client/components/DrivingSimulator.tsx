@@ -63,6 +63,7 @@ export const DrivingSimulator = ({
   const [lapTimes, setLapTimes] = useState<number[]>([]);
   const [raceStartTime, setRaceStartTime] = useState<number | null>(null);
   const [totalRaceTime, setTotalRaceTime] = useState<number>(0);
+  const [activeCheckpointIndex, setActiveCheckpointIndex] = useState<number>(0);
 
   // Track layout (circular track for simplicity)
   const trackRadius = 200;
@@ -86,6 +87,7 @@ export const DrivingSimulator = ({
     }
     
     setCheckpoints(newCheckpoints);
+    setActiveCheckpointIndex(0); // Reset to first checkpoint
   }, [trackConfig.cornerDensity]);
 
   // Calculate performance modifiers from car config
@@ -144,11 +146,13 @@ export const DrivingSimulator = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const performanceMod = getPerformanceModifier();
-    const maxSpeed = 200 * performanceMod * (trackConfig.surfaceGrip / 100);
-    const acceleration = 5 * performanceMod;
-    const deceleration = 8;
-    const turnSpeed = 0.05 * (1 + (carConfig.downforce - 50) * 0.01);
+        const performanceMod = getPerformanceModifier();
+        const maxSpeed = 200 * performanceMod * (trackConfig.surfaceGrip / 100);
+        const maxReverseSpeed = 80 * performanceMod * (trackConfig.surfaceGrip / 100); // Slower reverse
+        const acceleration = 5 * performanceMod;
+        const deceleration = 8;
+        const reverseAcceleration = 3 * performanceMod; // Slower reverse acceleration
+        const turnSpeed = 0.05 * (1 + (carConfig.downforce - 50) * 0.01);
 
     const updateCar = () => {
       setCarState((prev) => {
@@ -166,19 +170,40 @@ export const DrivingSimulator = ({
         let newSpeed = prev.speed;
         let newAngle = prev.angle;
 
-        // Apply throttle/brake
-        if (throttle > 0 && newSpeed < maxSpeed) {
-          newSpeed = Math.min(newSpeed + acceleration, maxSpeed);
+        // Apply throttle/brake/reverse
+        if (throttle > 0) {
+          // Forward acceleration
+          if (newSpeed < 0) {
+            // If moving backward, brake first
+            newSpeed = Math.min(newSpeed + deceleration, 0);
+          } else {
+            // Normal forward acceleration
+            newSpeed = Math.min(newSpeed + acceleration, maxSpeed);
+          }
         } else if (brake > 0) {
-          newSpeed = Math.max(newSpeed - deceleration, 0);
+          // Brake or reverse
+          if (newSpeed > 0) {
+            // Braking while moving forward
+            newSpeed = Math.max(newSpeed - deceleration, 0);
+          } else {
+            // Reverse acceleration (when stopped or moving backward)
+            newSpeed = Math.max(newSpeed - reverseAcceleration, -maxReverseSpeed);
+          }
         } else {
           // Natural deceleration
-          newSpeed = Math.max(newSpeed - 0.5, 0);
+          if (newSpeed > 0) {
+            newSpeed = Math.max(newSpeed - 0.5, 0);
+          } else if (newSpeed < 0) {
+            newSpeed = Math.min(newSpeed + 0.5, 0);
+          }
         }
 
-        // Apply steering (only when moving)
+        // Apply steering (only when moving, works in reverse too)
         if (Math.abs(newSpeed) > 5) {
-          newAngle += steering * turnSpeed * (newSpeed / maxSpeed);
+          const speedRatio = Math.abs(newSpeed) / maxSpeed;
+          // Reverse steering is slightly less responsive
+          const reverseMultiplier = newSpeed < 0 ? 0.7 : 1;
+          newAngle += steering * turnSpeed * speedRatio * reverseMultiplier;
         }
 
         // Update position based on speed and angle
@@ -205,13 +230,16 @@ export const DrivingSimulator = ({
         newX = clampedX;
         newY = clampedY;
 
-        // Check checkpoints
+        // Check checkpoints - only check the active checkpoint
         setCheckpoints((prevCheckpoints) => {
-          const updated = prevCheckpoints.map((checkpoint) => {
-            if (checkpoint.passed) return checkpoint;
-            
+          if (activeCheckpointIndex >= prevCheckpoints.length) {
+            return prevCheckpoints; // All checkpoints passed
+          }
+          
+          const activeCheckpoint = prevCheckpoints[activeCheckpointIndex];
+          if (activeCheckpoint && !activeCheckpoint.passed) {
             const dist = Math.sqrt(
-              Math.pow(newX - checkpoint.x, 2) + Math.pow(newY - checkpoint.y, 2)
+              Math.pow(newX - activeCheckpoint.x, 2) + Math.pow(newY - activeCheckpoint.y, 2)
             );
             
             if (dist < 30) {
@@ -222,17 +250,28 @@ export const DrivingSimulator = ({
               
               checkpointTimesRef.current.push(checkpointTime);
               
-              return {
-                ...checkpoint,
-                passed: true,
-                time: checkpointTime,
-              };
+              // Mark this checkpoint as passed and activate the next one
+              const updated = prevCheckpoints.map((cp, idx) => {
+                if (idx === activeCheckpointIndex) {
+                  return {
+                    ...cp,
+                    passed: true,
+                    time: checkpointTime,
+                  };
+                }
+                return cp;
+              });
+              
+              // Activate next checkpoint
+              if (activeCheckpointIndex < prevCheckpoints.length - 1) {
+                setActiveCheckpointIndex(activeCheckpointIndex + 1);
+              }
+              
+              return updated;
             }
-            
-            return checkpoint;
-          });
+          }
           
-          return updated;
+          return prevCheckpoints;
         });
 
         // Check if car is on track
@@ -258,8 +297,8 @@ export const DrivingSimulator = ({
           });
         }
 
-        // Check for lap completion (all checkpoints passed)
-        const allCheckpointsPassed = checkpoints.every((cp) => cp.passed);
+        // Check for lap completion (all checkpoints passed - check if active index is beyond last checkpoint)
+        const allCheckpointsPassed = activeCheckpointIndex >= checkpoints.length || checkpoints.every((cp) => cp.passed);
         let raceComplete = false;
         
         if (allCheckpointsPassed && lapStartTimeRef.current && prev.speed > 10) {
@@ -321,6 +360,7 @@ export const DrivingSimulator = ({
               checkpointTimesRef.current = [];
               replayDataRef.current = [];
               setCheckpoints((prev) => prev.map((cp) => ({ ...cp, passed: false, time: null })));
+              setActiveCheckpointIndex(0); // Reset to first checkpoint
               setCurrentLap(newLapNumber);
             }
           } else {
@@ -359,12 +399,24 @@ export const DrivingSimulator = ({
       ctx.arc(trackCenterX, trackCenterY, trackRadius, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Draw checkpoints
-      checkpoints.forEach((checkpoint) => {
-        ctx.fillStyle = checkpoint.passed ? '#00ff00' : '#ffff00';
-        ctx.beginPath();
-        ctx.arc(checkpoint.x, checkpoint.y, 15, 0, Math.PI * 2);
-        ctx.fill();
+      // Draw checkpoints - only show the active checkpoint
+      checkpoints.forEach((checkpoint, index) => {
+        // Only show if it's the active checkpoint or if it's been passed
+        if (index === activeCheckpointIndex || checkpoint.passed) {
+          ctx.fillStyle = checkpoint.passed ? '#00ff00' : '#ffff00';
+          ctx.beginPath();
+          ctx.arc(checkpoint.x, checkpoint.y, 15, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Draw a pulsing effect for active checkpoint
+          if (!checkpoint.passed && index === activeCheckpointIndex) {
+            ctx.strokeStyle = '#ffff00';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(checkpoint.x, checkpoint.y, 20 + Math.sin(Date.now() / 200) * 5, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        }
       });
 
       // Draw track markings
@@ -413,8 +465,9 @@ export const DrivingSimulator = ({
       ctx.fillText(`${mode === 'practice' ? '🏎️ PRACTICE' : '🏁 OFFICIAL RACE'}`, 20, 35);
       
       ctx.font = '14px monospace';
-      ctx.fillStyle = '#ffd700';
-      ctx.fillText(`Speed: ${Math.round(carState.speed)} km/h`, 20, 55);
+      ctx.fillStyle = carState.speed < 0 ? '#ff6b6b' : '#ffd700';
+      const speedDisplay = carState.speed < 0 ? `R ${Math.round(Math.abs(carState.speed))}` : `${Math.round(carState.speed)}`;
+      ctx.fillText(`Speed: ${speedDisplay} km/h`, 20, 55);
       
       ctx.fillStyle = '#fff';
       ctx.fillText(`Lap Time: ${lapTime.toFixed(2)}s`, 20, 75);
@@ -504,10 +557,38 @@ export const DrivingSimulator = ({
     replayDataRef.current = [];
     lapTimesRef.current = []; // Reset ref too
     setCheckpoints((prev) => prev.map((cp) => ({ ...cp, passed: false, time: null })));
+    setActiveCheckpointIndex(0); // Reset to first checkpoint
     setLapTime(0);
     setCurrentLap(0);
     setLapTimes([]);
     setTotalRaceTime(0);
+  };
+
+  const resetPractice = () => {
+    if (mode === 'practice') {
+      setIsDriving(false);
+      setCarState({
+        x: 400,
+        y: 300,
+        angle: 0,
+        speed: 0,
+        throttle: 0,
+        brake: 0,
+        steering: 0,
+      });
+      lapStartTimeRef.current = null;
+      raceStartTimeRef.current = null;
+      checkpointTimesRef.current = [];
+      replayDataRef.current = [];
+      lapTimesRef.current = [];
+      setCheckpoints((prev) => prev.map((cp) => ({ ...cp, passed: false, time: null })));
+      setActiveCheckpointIndex(0);
+      setLapTime(0);
+      setCurrentLap(0);
+      setLapTimes([]);
+      setTotalRaceTime(0);
+      setBestLapTime(null);
+    }
   };
 
   const stopDriving = () => {
@@ -531,6 +612,7 @@ export const DrivingSimulator = ({
     checkpointTimesRef.current = [];
     replayDataRef.current = [];
     setCheckpoints((prev) => prev.map((cp) => ({ ...cp, passed: false, time: null })));
+    setActiveCheckpointIndex(0);
   };
 
   return (
@@ -563,6 +645,14 @@ export const DrivingSimulator = ({
           >
             Stop
           </button>
+          {mode === 'practice' && (
+            <button
+              onClick={resetPractice}
+              className="bg-blue-600 text-white px-6 py-2 rounded font-semibold hover:bg-blue-700"
+            >
+              Reset
+            </button>
+          )}
           <div className="flex-1 bg-gray-100 p-3 rounded">
             <div className="text-sm text-gray-600">
               {mode === 'practice' 
@@ -578,13 +668,18 @@ export const DrivingSimulator = ({
           <h4 className="font-semibold mb-2">Controls:</h4>
           <ul className="text-sm space-y-1 text-gray-700">
             <li>↑ or W - Accelerate</li>
-            <li>↓ or S - Brake</li>
+            <li>↓ or S - Brake / Reverse (hold while stopped to reverse)</li>
             <li>← → or A D - Steer</li>
           </ul>
           {mode === 'practice' && (
-            <p className="text-sm text-gray-600 mt-2">
-              Practice mode allows unlimited laps. Your best time is tracked locally.
-            </p>
+            <>
+              <p className="text-sm text-gray-600 mt-2">
+                Practice mode allows unlimited laps. Your best time is tracked locally.
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                Use the Reset button to restart your practice session.
+              </p>
+            </>
           )}
         </div>
       )}
