@@ -43,6 +43,7 @@ export const DrivingSimulator = ({
   const raceStartTimeRef = useRef<number | null>(null);
   const checkpointTimesRef = useRef<number[]>([]);
   const replayDataRef = useRef<Array<{ time: number; x: number; y: number; speed: number }>>([]);
+  const lapTimesRef = useRef<number[]>([]); // Track lap times in ref to avoid stale closures
 
   const [carState, setCarState] = useState<CarState>({
     x: 400,
@@ -243,40 +244,56 @@ export const DrivingSimulator = ({
           const currentTime = Date.now();
           const completedLapTime = (currentTime - lapStartTimeRef.current) / 1000;
           
-          // Update lap times
-          setLapTimes((prev) => [...prev, completedLapTime]);
-          
-          // Update best lap time in practice mode
-          if (mode === 'practice') {
-            if (bestLapTime === null || completedLapTime < bestLapTime) {
-              setBestLapTime(completedLapTime);
-            }
-          }
-          
-          // Check if race is complete (all required laps done)
-          const newLapNumber = currentLap + 1;
-          const raceComplete = mode === 'official' && newLapNumber >= lapsRequired;
-          
-          if (raceComplete && raceStartTimeRef.current) {
-            // Race is complete - calculate total time
-            const totalTime = (currentTime - raceStartTimeRef.current) / 1000;
-            setTotalRaceTime(totalTime);
+          // Validate lap time before adding
+          if (completedLapTime > 0 && completedLapTime < 1000) {
+            // Update lap times in both state and ref
+            lapTimesRef.current.push(completedLapTime);
+            setLapTimes([...lapTimesRef.current]);
             
-            // Generate replay hash
-            const replayHash = generateReplayHash(replayDataRef.current);
-            
-            // Call onRaceComplete with all lap times (async, don't block)
-            setTimeout(() => {
-              if (onRaceComplete) {
-                const allLapTimes = [...lapTimes, completedLapTime];
-                // Use checkpoint times from final lap, ensure we have at least one
-                const finalCheckpointTimes = checkpointTimesRef.current.length > 0 
-                  ? [...checkpointTimesRef.current] 
-                  : [completedLapTime * 0.5, completedLapTime]; // Fallback if no checkpoints
-                onRaceComplete(totalTime, allLapTimes, finalCheckpointTimes, replayHash);
+            // Update best lap time in practice mode
+            if (mode === 'practice') {
+              if (bestLapTime === null || completedLapTime < bestLapTime) {
+                setBestLapTime(completedLapTime);
               }
-              setIsDriving(false);
-            }, 100);
+            }
+            
+            // Check if race is complete (all required laps done)
+            const newLapNumber = currentLap + 1;
+            const raceComplete = mode === 'official' && newLapNumber >= lapsRequired;
+            
+            if (raceComplete && raceStartTimeRef.current) {
+              // Race is complete - calculate total time
+              const totalTime = (currentTime - raceStartTimeRef.current) / 1000;
+              setTotalRaceTime(totalTime);
+              
+              // Generate replay hash
+              const replayHash = generateReplayHash(replayDataRef.current);
+              
+              // Call onRaceComplete with all lap times (use ref to get latest values)
+              setTimeout(() => {
+                if (onRaceComplete) {
+                  const allLapTimes = [...lapTimesRef.current]; // Use ref for latest values
+                  
+                  // Validate lap times
+                  const validLapTimes = allLapTimes.filter(lt => lt > 0 && lt < 1000);
+                  
+                  if (validLapTimes.length === 0) {
+                    console.error('No valid lap times found!', allLapTimes);
+                    return;
+                  }
+                  
+                  // Use checkpoint times from final lap, ensure we have at least one
+                  const finalCheckpointTimes = checkpointTimesRef.current.length > 0 
+                    ? [...checkpointTimesRef.current] 
+                    : [completedLapTime * 0.5, completedLapTime]; // Fallback if no checkpoints
+                  
+                  onRaceComplete(totalTime, validLapTimes, finalCheckpointTimes, replayHash);
+                }
+                setIsDriving(false);
+              }, 100);
+            }
+          } else {
+            console.warn('Invalid lap time detected:', completedLapTime);
           }
           
           // Reset for next lap (or continue if race not complete)
@@ -463,6 +480,7 @@ export const DrivingSimulator = ({
     raceStartTimeRef.current = now;
     checkpointTimesRef.current = [];
     replayDataRef.current = [];
+    lapTimesRef.current = []; // Reset ref too
     setCheckpoints((prev) => prev.map((cp) => ({ ...cp, passed: false, time: null })));
     setLapTime(0);
     setCurrentLap(0);
@@ -483,6 +501,7 @@ export const DrivingSimulator = ({
     });
     lapStartTimeRef.current = null;
     raceStartTimeRef.current = null;
+    lapTimesRef.current = []; // Reset ref too
     setLapTime(0);
     setCurrentLap(0);
     setLapTimes([]);

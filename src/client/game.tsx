@@ -44,8 +44,22 @@ const App = () => {
   ) => {
     if (mode === 'official' && !hasSubmitted && !raceFrozen) {
       try {
+        // Validate and filter lap times
+        const validLapTimes = lapTimes.filter(lt => lt > 0 && lt < 1000 && !isNaN(lt));
+        
+        if (validLapTimes.length === 0) {
+          throw new Error('No valid lap times recorded. Please complete at least one lap.');
+        }
+        
         // Use the best lap time for submission (fastest single lap)
-        const bestLapTime = Math.min(...lapTimes);
+        const bestLapTime = Math.min(...validLapTimes);
+        
+        console.log('Race complete:', {
+          totalTime,
+          lapTimes: validLapTimes,
+          bestLapTime,
+          checkpointTimes,
+        });
         
         // Ensure checkpointTimes is valid - if empty, create default checkpoints
         let validCheckpointTimes = checkpointTimes;
@@ -61,7 +75,7 @@ const App = () => {
         
         // Ensure checkpointTimes are in ascending order and don't exceed lap time
         validCheckpointTimes = validCheckpointTimes
-          .filter((t) => t > 0 && t <= bestLapTime)
+          .filter((t) => t > 0 && t <= bestLapTime && !isNaN(t))
           .sort((a, b) => a - b);
         
         // If still empty, add at least one checkpoint
@@ -77,7 +91,12 @@ const App = () => {
       } catch (error) {
         console.error('Failed to submit official run:', error);
         const errorMessage = error instanceof Error ? error.message : 'Submission failed';
-        console.error('Submission error details:', { bestLapTime: Math.min(...lapTimes), checkpointTimes, errorMessage });
+        console.error('Submission error details:', { 
+          lapTimes, 
+          bestLapTime: lapTimes.length > 0 ? Math.min(...lapTimes.filter(lt => lt > 0)) : 'N/A',
+          checkpointTimes, 
+          errorMessage 
+        });
         
         // Use showToast instead of alert
         const { showToast } = await import('@devvit/web/client');
