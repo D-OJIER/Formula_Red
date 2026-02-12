@@ -16,9 +16,17 @@ import { calculatePoints } from '../utils/points';
 export async function handleOfficialSubmission(
   payload: SubmissionPayload
 ): Promise<{ success: boolean; result?: PlayerResultView; error?: string }> {
+  // Log payload for debugging
+  console.log('Submission payload:', {
+    lapTime: payload.lapTime,
+    checkpointTimesLength: payload.checkpointTimes?.length,
+    trackId: payload.trackId,
+  });
+
   // Validate submission payload
   const validation = validateSubmissionPayload(payload);
   if (!validation.valid) {
+    console.error('Validation failed:', validation.error, 'Payload:', payload);
     return {
       success: false,
       error: validation.error,

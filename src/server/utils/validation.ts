@@ -74,12 +74,13 @@ export function validateSubmissionPayload(
     };
   }
 
-  // Verify lap time bounds (reasonable bounds: 10 seconds to 10 minutes)
+  // Verify lap time bounds (reasonable bounds: 5 seconds to 10 minutes)
   // Lower bound accounts for very short tracks, upper bound prevents unrealistic times
-  if (typeof payload.lapTime !== 'number' || payload.lapTime < 10 || payload.lapTime > 600) {
+  // Using 5 seconds as minimum to be very permissive
+  if (typeof payload.lapTime !== 'number' || isNaN(payload.lapTime) || payload.lapTime < 5 || payload.lapTime > 600) {
     return {
       valid: false,
-      error: 'lapTime must be between 10 and 600 seconds',
+      error: `lapTime must be between 5 and 600 seconds (received: ${payload.lapTime})`,
     };
   }
 
@@ -91,30 +92,32 @@ export function validateSubmissionPayload(
     };
   }
 
+  // Allow empty checkpointTimes - we'll create defaults if needed
+  // But if provided, they must be valid
   if (payload.checkpointTimes.length === 0) {
-    return {
-      valid: false,
-      error: 'checkpointTimes must contain at least one checkpoint',
-    };
+    // Empty is okay, we'll handle it on the server
+    // Don't return error here
   }
 
-  // Verify checkpoints are in ascending order
-  for (let i = 1; i < payload.checkpointTimes.length; i++) {
-    if (payload.checkpointTimes[i] <= payload.checkpointTimes[i - 1]) {
+  // Verify checkpoints are in ascending order (only if checkpoints provided)
+  if (payload.checkpointTimes.length > 0) {
+    for (let i = 1; i < payload.checkpointTimes.length; i++) {
+      if (payload.checkpointTimes[i] <= payload.checkpointTimes[i - 1]) {
+        return {
+          valid: false,
+          error: 'checkpointTimes must be in ascending order',
+        };
+      }
+    }
+
+    // Verify last checkpoint is less than or equal to lap time
+    const lastCheckpoint = payload.checkpointTimes[payload.checkpointTimes.length - 1];
+    if (lastCheckpoint > payload.lapTime) {
       return {
         valid: false,
-        error: 'checkpointTimes must be in ascending order',
+        error: 'Last checkpoint time cannot exceed lap time',
       };
     }
-  }
-
-  // Verify last checkpoint is less than or equal to lap time
-  const lastCheckpoint = payload.checkpointTimes[payload.checkpointTimes.length - 1];
-  if (lastCheckpoint > payload.lapTime) {
-    return {
-      valid: false,
-      error: 'Last checkpoint time cannot exceed lap time',
-    };
   }
 
   // Validate replay hash

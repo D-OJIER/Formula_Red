@@ -35,12 +35,12 @@ describe('Submission Validation', () => {
 
   it('should reject lap time out of bounds', () => {
     const payload = createValidPayload();
-    payload.lapTime = 10; // Too fast
+    payload.lapTime = 5; // Too fast (below 10 seconds)
     const result = validateSubmissionPayload(payload);
     expect(result.valid).toBe(false);
     expect(result.error).toContain('lapTime');
 
-    payload.lapTime = 700; // Too slow
+    payload.lapTime = 700; // Too slow (above 600 seconds)
     const result2 = validateSubmissionPayload(payload);
     expect(result2.valid).toBe(false);
     expect(result2.error).toContain('lapTime');

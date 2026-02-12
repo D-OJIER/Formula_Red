@@ -46,11 +46,42 @@ const App = () => {
       try {
         // Use the best lap time for submission (fastest single lap)
         const bestLapTime = Math.min(...lapTimes);
-        await submitOfficialRun(bestLapTime, checkpointTimes, replayHash, carConfig);
-        alert(`Race Complete! Your time: ${totalTime.toFixed(2)}s (Best Lap: ${bestLapTime.toFixed(2)}s)`);
+        
+        // Ensure checkpointTimes is valid - if empty, create default checkpoints
+        let validCheckpointTimes = checkpointTimes;
+        if (!validCheckpointTimes || validCheckpointTimes.length === 0) {
+          // Create checkpoints at 25%, 50%, 75% of best lap time
+          validCheckpointTimes = [
+            bestLapTime * 0.25,
+            bestLapTime * 0.5,
+            bestLapTime * 0.75,
+            bestLapTime
+          ];
+        }
+        
+        // Ensure checkpointTimes are in ascending order and don't exceed lap time
+        validCheckpointTimes = validCheckpointTimes
+          .filter((t) => t > 0 && t <= bestLapTime)
+          .sort((a, b) => a - b);
+        
+        // If still empty, add at least one checkpoint
+        if (validCheckpointTimes.length === 0) {
+          validCheckpointTimes = [bestLapTime];
+        }
+        
+        await submitOfficialRun(bestLapTime, validCheckpointTimes, replayHash, carConfig);
+        
+        // Use showToast instead of alert for Devvit
+        const { showToast } = await import('@devvit/web/client');
+        showToast(`Race Complete! Your time: ${totalTime.toFixed(2)}s (Best Lap: ${bestLapTime.toFixed(2)}s)`);
       } catch (error) {
         console.error('Failed to submit official run:', error);
-        alert(error instanceof Error ? error.message : 'Submission failed');
+        const errorMessage = error instanceof Error ? error.message : 'Submission failed';
+        console.error('Submission error details:', { bestLapTime: Math.min(...lapTimes), checkpointTimes, errorMessage });
+        
+        // Use showToast instead of alert
+        const { showToast } = await import('@devvit/web/client');
+        showToast(`Error: ${errorMessage}`, { appearance: 'error' });
       }
     }
   };

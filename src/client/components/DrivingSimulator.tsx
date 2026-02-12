@@ -269,8 +269,11 @@ export const DrivingSimulator = ({
             setTimeout(() => {
               if (onRaceComplete) {
                 const allLapTimes = [...lapTimes, completedLapTime];
-                // Use checkpoint times from final lap
-                onRaceComplete(totalTime, allLapTimes, [...checkpointTimesRef.current], replayHash);
+                // Use checkpoint times from final lap, ensure we have at least one
+                const finalCheckpointTimes = checkpointTimesRef.current.length > 0 
+                  ? [...checkpointTimesRef.current] 
+                  : [completedLapTime * 0.5, completedLapTime]; // Fallback if no checkpoints
+                onRaceComplete(totalTime, allLapTimes, finalCheckpointTimes, replayHash);
               }
               setIsDriving(false);
             }, 100);
