@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { CarConfig, TrackConfig } from '../../shared/types';
 import { getTrackPath } from '../utils/trackPathGenerator';
-import formulaRedLogo from '../assets/formula-red-logo.png';
 
 type DrivingSimulatorProps = {
   carConfig: CarConfig;
@@ -46,7 +45,6 @@ export const DrivingSimulator = ({
   const checkpointTimesRef = useRef<number[]>([]);
   const replayDataRef = useRef<Array<{ time: number; x: number; y: number; speed: number }>>([]);
   const lapTimesRef = useRef<number[]>([]); // Track lap times in ref to avoid stale closures
-  const logoImageRef = useRef<HTMLImageElement | null>(null);
 
   const [carStartPosition, setCarStartPosition] = useState<{ x: number; y: number; angle: number }>({ x: 400, y: 300, angle: 0 });
   
@@ -70,15 +68,6 @@ export const DrivingSimulator = ({
   const [totalRaceTime, setTotalRaceTime] = useState<number>(0);
   const [activeCheckpointIndex, setActiveCheckpointIndex] = useState<number>(0);
   const [trackPath, setTrackPath] = useState<{ points: Array<{ x: number; y: number; angle: number }>; checkpoints: Array<{ x: number; y: number; angle: number }> } | null>(null);
-
-  // Load logo image once
-  useEffect(() => {
-    const img = new Image();
-    img.src = formulaRedLogo;
-    img.onload = () => {
-      logoImageRef.current = img;
-    };
-  }, []);
 
   // Generate track path based on track config
   useEffect(() => {
@@ -561,14 +550,7 @@ export const DrivingSimulator = ({
 
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 18px monospace';
-      
-      // Draw logo for practice mode, then text
-      if (mode === 'practice' && logoImageRef.current) {
-        ctx.drawImage(logoImageRef.current, 20, 10, 20, 20);
-        ctx.fillText('PRACTICE', 45, 35);
-      } else {
-        ctx.fillText('🏁 OFFICIAL RACE', 20, 35);
-      }
+      ctx.fillText(`${mode === 'practice' ? '🏎️ PRACTICE' : '🏁 OFFICIAL RACE'}`, 20, 35);
       
       ctx.font = '14px monospace';
       ctx.fillStyle = carState.speed < 0 ? '#ff6b6b' : '#ffd700';
