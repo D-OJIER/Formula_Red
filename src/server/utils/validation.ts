@@ -74,11 +74,12 @@ export function validateSubmissionPayload(
     };
   }
 
-  // Verify lap time bounds (reasonable bounds: 30 seconds to 10 minutes)
-  if (typeof payload.lapTime !== 'number' || payload.lapTime < 30 || payload.lapTime > 600) {
+  // Verify lap time bounds (reasonable bounds: 10 seconds to 10 minutes)
+  // Lower bound accounts for very short tracks, upper bound prevents unrealistic times
+  if (typeof payload.lapTime !== 'number' || payload.lapTime < 10 || payload.lapTime > 600) {
     return {
       valid: false,
-      error: 'lapTime must be between 30 and 600 seconds',
+      error: 'lapTime must be between 10 and 600 seconds',
     };
   }
 

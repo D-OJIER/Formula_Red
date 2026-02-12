@@ -32,11 +32,12 @@ export function checkSuspiciousLapTime(
   const maxSpeed = 83.33;
   const minTheoreticalTime = trackLength / maxSpeed;
 
-  // If lap time is less than 80% of theoretical minimum, flag as suspicious
-  if (lapTime < minTheoreticalTime * 0.8) {
+  // If lap time is less than 60% of theoretical minimum, flag as suspicious
+  // More lenient threshold to account for short tracks and good driving
+  if (lapTime < minTheoreticalTime * 0.6) {
     return {
       suspicious: true,
-      reason: `Lap time ${lapTime}s is suspiciously fast for track length ${trackLength}m`,
+      reason: `Lap time ${lapTime.toFixed(2)}s is suspiciously fast for track length ${trackLength}m (minimum theoretical: ${minTheoreticalTime.toFixed(2)}s)`,
     };
   }
 
