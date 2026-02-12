@@ -8,12 +8,14 @@ type SubmissionFormProps = {
   }) => Promise<void>;
   disabled?: boolean;
   sessionType: string;
+  onSetupChange?: (setup: DriverSubmission['carSetup']) => void;
 };
 
 export const SubmissionForm = ({
   onSubmit,
   disabled = false,
   sessionType,
+  onSetupChange,
 }: SubmissionFormProps) => {
   const [carSetup, setCarSetup] = useState({
     downforce: 50,
@@ -61,9 +63,11 @@ export const SubmissionForm = ({
                 min="0"
                 max="100"
                 value={value}
-                onChange={(e) =>
-                  setCarSetup({ ...carSetup, [key]: parseInt(e.target.value) })
-                }
+                onChange={(e) => {
+                  const newSetup = { ...carSetup, [key]: parseInt(e.target.value) };
+                  setCarSetup(newSetup);
+                  onSetupChange?.(newSetup);
+                }}
                 disabled={disabled || loading}
                 className="w-full"
               />

@@ -1,11 +1,13 @@
 import './index.css';
 
-import { StrictMode } from 'react';
+import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useFormulaRed } from './hooks/useFormulaRed';
 import { SubmissionForm } from './components/SubmissionForm';
 import { Leaderboard } from './components/Leaderboard';
 import { Podium } from './components/Podium';
+import { DrivingSimulator } from './components/DrivingSimulator';
+import type { DriverSubmission } from '../shared/types';
 
 const App = () => {
   const {
@@ -26,6 +28,34 @@ const App = () => {
   const isRace = currentSession === 'RACE';
   const canSubmit = isPractice || isRace;
   const raceFrozen = raceDay?.frozen || false;
+
+  const [carSetup, setCarSetup] = useState<DriverSubmission['carSetup']>({
+    downforce: 50,
+    suspension: 50,
+    gearRatio: 50,
+    tirePressure: 50,
+    brakeBias: 50,
+  });
+
+  const handleLapComplete = async (lapTime: number) => {
+    if (!canSubmit || raceFrozen) return;
+    
+    const strategy = {
+      fuelLoad: 50,
+      tireCompound: 'medium' as const,
+      pitStrategy: 'no-pit' as const,
+    };
+
+    try {
+      if (isRace) {
+        await submitRace({ carSetup, strategy });
+      } else {
+        await submitPractice({ carSetup, strategy });
+      }
+    } catch (error) {
+      console.error('Failed to submit lap time:', error);
+    }
+  };
 
   if (loading) {
     return (
@@ -90,6 +120,20 @@ const App = () => {
           </div>
         )}
 
+        {/* Driving Simulator */}
+        {raceDay && canSubmit && !raceFrozen && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold mb-4">🏎️ Drive Your Car</h2>
+            <DrivingSimulator
+              carSetup={carSetup}
+              trackConfig={raceDay.trackConfig}
+              modifier={raceDay.modifier}
+              onLapComplete={handleLapComplete}
+              disabled={raceFrozen}
+            />
+          </div>
+        )}
+
         {/* Main Content Grid */}
         <div className="grid md:grid-cols-2 gap-6">
           {/* Submission Form */}
@@ -102,6 +146,7 @@ const App = () => {
                 onSubmit={isRace ? submitRace : submitPractice}
                 disabled={raceFrozen}
                 sessionType={currentSession}
+                onSetupChange={setCarSetup}
               />
             ) : (
               <div className="text-gray-500">
