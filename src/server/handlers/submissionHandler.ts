@@ -3,7 +3,7 @@ import type {
   OfficialRaceResult,
   PlayerResultView,
 } from '../../shared/types';
-import { getDailyRace, storeOfficialResult, getAllOfficialResults } from '../storage/dailyRaceStorage';
+import { getDailyRace, storeOfficialResult, getAllOfficialResults, updateRaceResults } from '../storage/dailyRaceStorage';
 import { generateDailyTrack } from '../utils/trackGenerator';
 import { validateSubmissionPayload, validateSubmissionAccess } from '../utils/validation';
 import { performAntiCheatCheck } from '../utils/antiCheat';
@@ -91,8 +91,17 @@ export async function handleOfficialSubmission(
   const sortedResults = getDailyLeaderboard(allResults);
   const resultsWithPositions = assignPositions(sortedResults);
 
+  // Calculate points for all results
+  const resultsWithPoints = resultsWithPositions.map((r) => ({
+    ...r,
+    points: calculatePoints(r.position),
+  }));
+
+  // Update stored results with positions and points
+  await updateRaceResults(payload.trackId, resultsWithPoints);
+
   // Find player's rank
-  const playerResult = resultsWithPositions.find((r) => r.userId === payload.userId);
+  const playerResult = resultsWithPoints.find((r) => r.userId === payload.userId);
   if (!playerResult) {
     return {
       success: false,
@@ -100,11 +109,8 @@ export async function handleOfficialSubmission(
     };
   }
 
-  // Calculate points for player
-  playerResult.points = calculatePoints(playerResult.position);
-
   // Get top leaderboard slice (top 10)
-  const topLeaderboard = resultsWithPositions.slice(0, 10);
+  const topLeaderboard = resultsWithPoints.slice(0, 10);
 
   return {
     success: true,

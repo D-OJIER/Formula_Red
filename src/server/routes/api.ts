@@ -13,8 +13,9 @@ import { getDailyRace } from '../storage/dailyRaceStorage';
 import { getAllOfficialResults } from '../storage/dailyRaceStorage';
 import { getSeasonStandings } from '../storage/seasonStorage';
 import { getDateString } from '../utils/sessionTime';
-import { getDailyLeaderboard } from '../utils/leaderboard';
+import { getDailyLeaderboard, assignPositions } from '../utils/leaderboard';
 import { getPodiumFromResults } from '../utils/finalization';
+import { calculatePoints } from '../utils/points';
 import type { SubmissionPayload } from '../../shared/types';
 import { generateDailyTrack } from '../utils/trackGenerator';
 
@@ -127,7 +128,14 @@ api.get('/race/daily', async (c) => {
 api.get('/leaderboard/daily', async (c) => {
   const trackId = c.req.query('trackId') || getDateString();
   const allResults = await getAllOfficialResults(trackId);
-  const results = getDailyLeaderboard(allResults);
+  // Sort and assign positions/points to ensure they're up to date
+  const sorted = getDailyLeaderboard(allResults);
+  const withPositions = assignPositions(sorted);
+  const { calculatePoints } = await import('../utils/points');
+  const results = withPositions.map((r) => ({
+    ...r,
+    points: calculatePoints(r.position),
+  }));
   return c.json<GetDailyLeaderboardResponse>({ results });
 });
 
